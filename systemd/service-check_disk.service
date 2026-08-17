@@ -1,0 +1,20 @@
+[Unit]
+Description=Checks disk space and alerts if low
+After=network.target
+
+[Service]
+Type=simple
+User=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/service_wrapper.py Check_Disk
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits (optional, uncomment and adjust as needed)
+# CPUQuota=50%
+# MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

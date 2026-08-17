@@ -1,0 +1,171 @@
+[
+    {
+        "service_name": "Get Themas",
+        "executable": "/usr/bin/php",
+        "path": "/web/zin/api/getThemas.php",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/web/zin/api",
+        "time_or_minute": "minute",
+        "timeout_minutes": 30
+    },
+    {
+        "service_name": "Clean lock files",
+        "executable": "/usr/bin/php",
+        "path": "/web/cleanLockFiles.php",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/web",
+        "time_or_minute": "minute",
+        "timeout_minutes": 30
+    },
+    {
+        "service_name": "Converter",
+        "executable": "/usr/bin/python3",
+        "path": "/web/helpScripts/convert.py",
+        "interval_minutes": 720,
+        "execute_immediately": true,
+        "working_dir": "/web/helpScripts",
+        "time_or_minute": "minute",
+        "timeout_minutes": 90
+    },
+    {
+        "service_name": "MySQL Backup",
+        "executable": "/usr/bin/php",
+        "path": "/web/helpScripts/mysqlBackup.php",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/web/helpScripts",
+        "time_or_minute": "minute",
+        "timeout_minutes": 60
+    },
+    {
+        "service_name": "Check Disk",
+        "executable": "/usr/bin/python3",
+        "path": "/home/gomer/pythonCron/checkDisk.py",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/web/pythonCron",
+        "time_or_minute": "minute"
+    },
+    {
+        "service_name": "Backup Zin EAF/SRT files",
+        "executable": "/usr/bin/python3",
+        "path": "/web/helpScripts/zinBackup.py",
+        "interval_minutes": 1440,
+        "execute_immediately": true,
+        "working_dir": "/web/pythonCron",
+        "time_or_minute": "minute",
+        "timeout_minutes": 90
+    },
+    {
+        "service_name": "Move StudioFiles",
+        "executable": "/usr/bin/python3",
+        "path": "/web/helpScripts/check_studiofiles.py",
+        "interval_minutes": 360,
+        "execute_immediately": true,
+        "working_dir": "/web/helpScripts",
+        "time_or_minute": "minute",
+        "timeout_minutes": 90
+    },
+    {
+        "service_name": "Check if raw has post files",
+        "executable": "/usr/bin/python3",
+        "path": "/web/tempScripts/compareFiles.py",
+        "interval_minutes": 360,
+        "execute_immediately": true,
+        "working_dir": "/web/tempScripts",
+        "time_or_minute": "minute"
+    },
+    {
+        "service_name": "convert zinString to LemmaList",
+        "executable": "/usr/bin/python3",
+        "path": "/web/josBoard/lemma_lookup.py",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/web/tempScripts",
+        "time_or_minute": "minute"
+    },
+    {
+        "service_name": "Update field gvg at sentences",
+        "executable": "/usr/bin/python3",
+        "path": "/web/zin/eaf/zin/GvGtoSql.py",
+        "interval_minutes": 1440,
+        "execute_immediately": true,
+        "working_dir": "/web/tempScripts",
+        "time_or_minute": "minute"
+    },
+    {
+        "service_name": "sync Vicon files (rsync)",
+        "executable": "/usr/bin/python3",
+        "path": "/home/gomer/viconSync/sync_vicon_rsync.py",
+        "interval_minutes": 1440,
+        "execute_immediately": false,
+        "working_dir": "/home/gomer/viconSync",
+        "scheduled_time": "02:30",
+        "time_or_minute": "time",
+        "timeout_minutes": 120
+    },
+    {
+        "service_name": "match Vicon FBX/CSV files with mocap records",
+        "executable": "/usr/bin/python3",
+        "path": "/web/mocap/matchVicon.py",
+        "interval_minutes": 1440,
+        "execute_immediately": false,
+        "working_dir": "/web/mocap",
+        "scheduled_time": "23:00",
+        "time_or_minute": "time"
+    },
+    {
+        "service_name": "Convert Livelink videos",
+        "executable": "/usr/bin/python3",
+        "path": "/web/mocap/convert.py",
+        "interval_minutes": 1440,
+        "execute_immediately": false,
+        "working_dir": "/web/mocap",
+        "scheduled_time": "22:00",
+        "time_or_minute": "time",
+        "timeout_minutes": 90
+    },
+    {
+        "service_name": "Sync Mocap Files",
+        "executable": "/usr/bin/python3",
+        "path": "/home/gomer/pythonCron/sync_mocap_files.py",
+        "interval_minutes": 360,
+        "execute_immediately": false,
+        "working_dir": "/home/gomer/pythonCron",
+        "time_or_minute": "minute",
+        "timeout_minutes": 1440
+    },
+    {
+        "service_name": "Cleanup OBS from Vicon PC",
+        "executable": "/usr/bin/python3",
+        "path": "/home/gomer/viconSync/cleanup_obs.py",
+        "interval_minutes": 10080,
+        "execute_immediately": false,
+        "working_dir": "/home/gomer/viconSync",
+        "scheduled_time": "04:00",
+        "time_or_minute": "time",
+        "timeout_minutes": 30
+    },
+    {
+        "service_name": "Rclone Mount Monitor",
+        "executable": "/usr/bin/python3",
+        "path": "/home/gomer/pythonCron/rclone_monitor.py",
+        "interval_minutes": 60,
+        "execute_immediately": true,
+        "working_dir": "/home/gomer/pythonCron",
+        "time_or_minute": "minute",
+        "timeout_minutes": 5
+    },
+    {
+        "service_name": "Sync EAF to Database",
+        "executable": "/usr/bin/php",
+        "path": "/web/zin/syncEafToDatabase.php",
+        "interval_minutes": 60,
+        "execute_immediately": false,
+        "working_dir": "/web/zin",
+        "time_or_minute": "minute",
+        "timeout_minutes": 30
+    }
+]

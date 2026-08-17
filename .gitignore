@@ -1,0 +1,51 @@
+# ---- Logs (runtime output, actively written by live services) ----
+*.log
+*.log.*
+logs/
+nohup.out
+
+# ---- Runtime state (machine-specific, must not be shared) ----
+state/
+*.db
+*.db-shm
+*.db-wal
+servicesRecords.json
+
+# ---- Secrets ----
+.env
+*.env
+!.env.example
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---- Node ----
+node_modules/
+npm-debug.log*
+
+# ---- Local tooling / editor ----
+.claude/settings.local.json
+.mcp.json
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# ---- Large generated data dumps ----
+signbank/*.json
+20*.json
+!config.json
+!services_config.json
+!package.json
+!package-lock.json

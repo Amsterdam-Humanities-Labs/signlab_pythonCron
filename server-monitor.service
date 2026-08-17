@@ -1,0 +1,31 @@
+[Unit]
+Description=Server Monitor (disk, rclone, mysql)
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=gomer
+Group=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/server_monitor.py
+Restart=always
+RestartSec=10
+
+Environment=PYTHONUNBUFFERED=1
+
+MemoryMax=256M
+TasksMax=50
+
+NoNewPrivileges=yes
+ProtectSystem=full
+ReadWritePaths=/home/gomer/pythonCron /web/gebarenoverleg_media/studioFiles /tmp
+PrivateTmp=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+StandardOutput=append:/home/gomer/pythonCron/server_monitor.log
+StandardError=append:/home/gomer/pythonCron/server_monitor.log
+
+[Install]
+WantedBy=multi-user.target

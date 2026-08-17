@@ -1,0 +1,16 @@
+[Unit]
+Description=Service Wrapper Watchdog Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/watchdog_daemon.py --check-interval 3600
+Restart=always
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

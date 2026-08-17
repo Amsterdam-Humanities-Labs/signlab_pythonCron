@@ -1,0 +1,20 @@
+[Unit]
+Description=Matches LiveLink video records with mocap data
+After=network.target
+
+[Service]
+Type=simple
+User=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/service_wrapper.py match_Records_for_LiveLink_videos_with_mocap_records
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits (optional, uncomment and adjust as needed)
+# CPUQuota=50%
+# MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

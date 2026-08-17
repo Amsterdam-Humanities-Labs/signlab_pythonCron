@@ -1,0 +1,765 @@
+{
+  "global": {
+    "log_dir": "/home/gomer/pythonCron/logs",
+    "state_dir": "/home/gomer/pythonCron/state",
+    "max_concurrent_services": 10,
+    "health_check_interval_seconds": 300,
+    "alert_email": null,
+    "disk_space_warning_threshold_percent": 85,
+    "disk_space_critical_threshold_percent": 95
+  },
+
+  "services": [
+    {
+      "name": "Get_Themas",
+      "enabled": true,
+      "description": "Retrieves themas from API",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 0
+      },
+
+      "command": {
+        "executable": "/usr/bin/php",
+        "script": "/web/zin/api/getThemas.php",
+        "working_dir": "/web",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 300,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 60,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Clean_lock_files",
+      "enabled": true,
+      "description": "Cleans lock files from web directory",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 30
+      },
+
+      "command": {
+        "executable": "/usr/bin/php",
+        "script": "/web/cleanLockFiles.php",
+        "working_dir": "/web",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 300,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 60,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Converter",
+      "enabled": true,
+      "description": "Converts media files",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 43200,
+        "time": null,
+        "jitter_seconds": 60
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/helpScripts/convert.py",
+        "working_dir": "/web/helpScripts",
+        "environment": {},
+        "timeout_seconds": 5400
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 600,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 300,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 100,
+        "max_files": 2
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 7200,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "MySQL_Backup",
+      "enabled": true,
+      "description": "Performs MySQL database backup",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 86400,
+        "time": null,
+        "jitter_seconds": 60
+      },
+
+      "command": {
+        "executable": "php",
+        "script": "/web/helpScripts/mysqlBackup.php",
+        "working_dir": "/web/helpScripts",
+        "environment": {},
+        "timeout_seconds": 3600
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 600,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 120,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 100,
+        "max_files": 2
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 5400,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Check_Disk",
+      "enabled": true,
+      "description": "Checks disk space and alerts if low",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 15
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/home/gomer/pythonCron/checkDisk.py",
+        "working_dir": "/web/pythonCron",
+        "environment": {},
+        "timeout_seconds": 300
+      },
+
+      "health": {
+        "max_consecutive_failures": 5,
+        "restart_delay_seconds": 300,
+        "alert_after_failures": 10
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 60,
+        "exponential_backoff": false
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 10,
+        "max_files": 5
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Copy_AB_files",
+      "enabled": true,
+      "description": "Copies AB files to backup location",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 21600,
+        "time": null,
+        "jitter_seconds": 120
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/zin/copyAB.py",
+        "working_dir": "/web/pythonCron",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 600,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 180,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Backup_Zin_EAF_SRT_files",
+      "enabled": true,
+      "description": "Backs up Zin EAF and SRT files",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 86400,
+        "time": null,
+        "jitter_seconds": 300
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/helpScripts/zinBackup.py",
+        "working_dir": "/web/pythonCron",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 1800,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 600,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "qRconvert",
+      "enabled": true,
+      "description": "Converts QR code related data",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 45
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/qr/qrConvert.py",
+        "working_dir": "/web/qr",
+        "environment": {},
+        "timeout_seconds": 3600
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 600,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 120,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 100,
+        "max_files": 2
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 5400,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Move_StudioFiles",
+      "enabled": true,
+      "description": "Moves studio files to appropriate locations",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 21600,
+        "time": null,
+        "jitter_seconds": 180
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/helpScripts/check_studiofiles.py",
+        "working_dir": "/web/helpScripts",
+        "environment": {},
+        "timeout_seconds": 5400
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 900,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 300,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 100,
+        "max_files": 2
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 7200,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Check_if_raw_has_post_files",
+      "enabled": true,
+      "description": "Checks if raw directory has corresponding post files",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 90
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/tempScripts/compareFiles.py",
+        "working_dir": "/web/tempScripts",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 600,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 120,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "convert_zinString_to_LemmaList",
+      "enabled": true,
+      "description": "Converts zinString format to LemmaList",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 3600,
+        "time": null,
+        "jitter_seconds": 20
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/josBoard/lemma_lookup.py",
+        "working_dir": "/web/tempScripts",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 3,
+        "restart_delay_seconds": 300,
+        "alert_after_failures": 5
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 60,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Update_field_glosses_at_sentences",
+      "enabled": true,
+      "description": "Updates gloss fields in sentence database",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 86400,
+        "time": null,
+        "jitter_seconds": 600
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/zin/eaf/zin/glosTosql.py",
+        "working_dir": "/web/tempScripts",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 1800,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 300,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Update_field_gvg_at_sentences",
+      "enabled": true,
+      "description": "Updates GvG fields in sentence database",
+
+      "execution": {
+        "type": "interval",
+        "interval_seconds": 86400,
+        "time": null,
+        "jitter_seconds": 900
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/zin/eaf/zin/GvGtoSql.py",
+        "working_dir": "/web/tempScripts",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 1800,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 300,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "match_Records_for_LiveLink_videos_with_mocap_records",
+      "enabled": true,
+      "description": "Matches LiveLink video records with mocap data",
+
+      "execution": {
+        "type": "time",
+        "interval_seconds": 86400,
+        "time": "22:30",
+        "jitter_seconds": 120
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/mocap/matchRecords.py",
+        "working_dir": "/web/mocap",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 3600,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 600,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "match_Vicon_FBX_CSV_files_with_mocap_records",
+      "enabled": true,
+      "description": "Matches Vicon FBX/CSV files with mocap records",
+
+      "execution": {
+        "type": "time",
+        "interval_seconds": 86400,
+        "time": "23:00",
+        "jitter_seconds": 120
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/mocap/matchVicon.py",
+        "working_dir": "/web/mocap",
+        "environment": {},
+        "timeout_seconds": 1800
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 3600,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 600,
+        "exponential_backoff": true
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 50,
+        "max_files": 3
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 3600,
+        "auto_restart": true
+      }
+    },
+
+    {
+      "name": "Convert_Livelink_videos",
+      "enabled": true,
+      "description": "Converts Livelink videos to required format",
+
+      "execution": {
+        "type": "time",
+        "interval_seconds": 86400,
+        "time": "22:00",
+        "jitter_seconds": 180
+      },
+
+      "command": {
+        "executable": "/usr/bin/python3",
+        "script": "/web/mocap/convert.py",
+        "working_dir": "/web/mocap",
+        "environment": {},
+        "timeout_seconds": 5400
+      },
+
+      "health": {
+        "max_consecutive_failures": 2,
+        "restart_delay_seconds": 3600,
+        "alert_after_failures": 3
+      },
+
+      "retry": {
+        "enabled": true,
+        "max_retries": 1,
+        "retry_delay_seconds": 1800,
+        "exponential_backoff": false
+      },
+
+      "logging": {
+        "level": "INFO",
+        "max_size_mb": 100,
+        "max_files": 2
+      },
+
+      "watchdog": {
+        "enabled": true,
+        "check_if_hung": true,
+        "hung_threshold_seconds": 7200,
+        "auto_restart": true
+      }
+    }
+  ]
+}

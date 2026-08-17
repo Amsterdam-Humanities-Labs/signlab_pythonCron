@@ -1,0 +1,20 @@
+[Unit]
+Description=Backs up Zin EAF and SRT files
+After=network.target
+
+[Service]
+Type=simple
+User=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/service_wrapper.py Backup_Zin_EAF_SRT_files
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits (optional, uncomment and adjust as needed)
+# CPUQuota=50%
+# MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

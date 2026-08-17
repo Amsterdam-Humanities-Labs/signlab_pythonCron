@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>pythonCron — Service Pipeline Overview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A3 landscape; margin: 12mm; }
+  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1a2332; font-size: 11px; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: avoid; }
+
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+  .subtitle { color: #5a6a85; font-size: 12px; margin-bottom: 14px; }
+  h2 { font-size: 15px; font-weight: 700; padding: 5px 10px; border-radius: 5px; margin: 14px 0 4px 0; display: inline-block; }
+  .pipeline-desc { color: #44546a; font-size: 10.5px; margin: 2px 0 8px 2px; max-width: 950px; }
+
+  .h-mocap   { background: #e8f0fe; color: #1a56b8; }
+  .h-studio  { background: #e6f6ec; color: #1d7a3e; }
+  .h-annot   { background: #fdf0e2; color: #b05c10; }
+  .h-maint   { background: #f3e8fd; color: #7430b8; }
+
+  /* flow layout */
+  .flow { display: flex; align-items: center; flex-wrap: nowrap; margin: 6px 0 10px 0; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .card {
+    border: 1px solid #c8d2e0; border-radius: 7px; background: #fff;
+    padding: 7px 9px 8px 9px; width: 172px; flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(20,35,60,.10);
+    border-top: 4px solid #888;
+  }
+  .card.mocap  { border-top-color: #3b78de; }
+  .card.studio { border-top-color: #2e9e58; }
+  .card.annot  { border-top-color: #e08a2e; }
+  .card.maint  { border-top-color: #9356d0; }
+  .card .name { font-weight: 700; font-size: 11.5px; line-height: 1.25; margin-bottom: 4px; }
+  .badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
+  .badge { font-size: 8.5px; font-weight: 600; padding: 1.5px 6px; border-radius: 8px; white-space: nowrap; }
+  .b-sched { background: #eef2f8; color: #34507a; border: 1px solid #cdd9ea; }
+  .b-py    { background: #e8f0fe; color: #1a56b8; }
+  .b-php   { background: #ece4f7; color: #6b3fa0; }
+  .b-to    { background: #fdeaea; color: #b03030; }
+  .card .desc { font-size: 9.5px; color: #44546a; line-height: 1.35; }
+
+  .ext {
+    border: 1.5px dashed #97a6bc; border-radius: 7px; background: #f4f6fa;
+    padding: 7px 9px; width: 150px; flex-shrink: 0; text-align: center;
+  }
+  .ext .name { font-weight: 700; font-size: 11px; color: #3c4c66; }
+  .ext .desc { font-size: 9px; color: #5a6a85; margin-top: 2px; line-height: 1.3; }
+  .ext.db { border-radius: 14px / 18px; }
+
+  .arrow { display: flex; flex-direction: column; align-items: center; min-width: 56px; flex-shrink: 1; padding: 0 3px; }
+  .arrow .lbl { font-size: 8px; color: #5a6a85; text-align: center; line-height: 1.2; margin-bottom: 1px; max-width: 90px; }
+  .arrow .line { color: #7c8ba3; font-size: 14px; line-height: 1; white-space: nowrap; }
+
+  .legend { display: flex; gap: 16px; align-items: center; margin: 8px 0 2px 0; font-size: 9.5px; color: #44546a; }
+  .legend .sw { display: inline-block; width: 18px; height: 9px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .legend .ext-sw { display: inline-block; width: 18px; height: 9px; border: 1.5px dashed #97a6bc; background: #f4f6fa; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+  /* reference table */
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th { background: #1f3a5f; color: #fff; text-align: left; padding: 5px 8px; font-size: 10px; }
+  td { border-bottom: 1px solid #dbe3ee; padding: 4.5px 8px; font-size: 9.8px; vertical-align: top; line-height: 1.35; }
+  tr:nth-child(even) td { background: #f6f8fb; }
+  td.svc { font-weight: 700; white-space: nowrap; }
+  td.mono { font-family: 'Consolas', monospace; font-size: 9px; color: #44546a; }
+  .pill { font-size: 8.5px; font-weight: 600; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+
+  .footer { margin-top: 10px; font-size: 8.5px; color: #8a97ab; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1: Mocap + Studio pipelines ============ -->
+<div class="page">
+  <h1>pythonCron — Service Pipelines</h1>
+  <div class="subtitle">17 services orchestrated by <b>scheduler.py</b> (config.json) · checks every 60&nbsp;s · failed services auto-retried daily 06:00–06:30 · generated 2026-06-10</div>
+  <div class="legend">
+    <span><span class="sw" style="background:#3b78de"></span>Mocap / Vicon</span>
+    <span><span class="sw" style="background:#2e9e58"></span>Studio video</span>
+    <span><span class="sw" style="background:#e08a2e"></span>Annotation / linguistics</span>
+    <span><span class="sw" style="background:#9356d0"></span>Backup &amp; monitoring</span>
+    <span><span class="ext-sw"></span>External system / data store</span>
+    <span class="badge b-py">Python</span>
+    <span class="badge b-php">PHP</span>
+    <span class="badge b-to">timeout</span>
+  </div>
+
+  <h2 class="h-mocap">1 · Mocap / Vicon pipeline</h2>
+  <div class="pipeline-desc">Motion-capture recordings travel from the Vicon PC to the web server, get matched to database records, are archived to SharePoint, and finally the originals are deleted from the capture machine — strictly in that order, with verification before every deletion.</div>
+  <div class="flow">
+    <div class="ext"><div class="name">Vicon PC</div><div class="desc">SSH · E:\Recordings, D:\PostExports<br>FBX / CSV / JSON / Shogun / OBS</div></div>
+    <div class="arrow"><div class="lbl">sshpass / scp</div><div class="line">──▶</div></div>
+    <div class="card mocap"><div class="name">sync Vicon files (rsync)</div>
+      <div class="badges"><span class="badge b-sched">daily 02:30</span><span class="badge b-py">Python</span><span class="badge b-to">120 m</span></div>
+      <div class="desc">Pulls FBX/CSV/JSON/Shogun captures over SSH with incremental caching; converts FBX → GLB on arrival.</div></div>
+    <div class="arrow"><div class="lbl">files in /web/gebaren-overleg_media/*</div><div class="line">──▶</div></div>
+    <div class="card mocap"><div class="name">match Vicon FBX/CSV files</div>
+      <div class="badges"><span class="badge b-sched">daily 23:00</span><span class="badge b-py">Python</span></div>
+      <div class="desc">Links FBX/CSV files to <b>mocap_files</b> DB records by gloss + take number.</div></div>
+    <div class="arrow"><div class="lbl">matched files</div><div class="line">──▶</div></div>
+    <div class="card mocap"><div class="name">Sync Mocap Files</div>
+      <div class="badges"><span class="badge b-sched">every 6 h</span><span class="badge b-py">Python</span><span class="badge b-to">24 h</span></div>
+      <div class="desc">rclone-copies FBX/GLB/CSV/Shogun files to SharePoint; deletes local Shogun files once sizes match remote.</div></div>
+    <div class="arrow"><div class="lbl">verified on remote</div><div class="line">──▶</div></div>
+    <div class="card mocap"><div class="name">Cleanup OBS from Vicon PC</div>
+      <div class="badges"><span class="badge b-sched">weekly 04:00</span><span class="badge b-py">Python</span><span class="badge b-to">30 m</span></div>
+      <div class="desc">Deletes OBS .mkv + Shogun captures from the Vicon PC only after confirming copies exist locally or on rclone remote.</div></div>
+    <div class="arrow"><div class="lbl">archive</div><div class="line">──▶</div></div>
+    <div class="ext db"><div class="name">SharePoint</div><div class="desc">rclone remote “signcollect:”<br>/studioFiles/mocapFiles</div></div>
+  </div>
+
+  <h2 class="h-studio">2 · Studio video pipeline</h2>
+  <div class="pipeline-desc">Raw studio recordings are sorted into the right date folders, transcoded to lightweight web versions with thumbnails, and flagged as post-processed once complete camera triplets (L/M/R) exist — which gates the SignBank upload workflow.</div>
+  <div class="flow">
+    <div class="ext"><div class="name">studioFiles/</div><div class="desc">raw camera recordings<br>(L/M/R/A/B + takes1–12)</div></div>
+    <div class="arrow"><div class="lbl">rclone move</div><div class="line">──▶</div></div>
+    <div class="card studio"><div class="name">Move StudioFiles</div>
+      <div class="badges"><span class="badge b-sched">every 6 h</span><span class="badge b-py">Python</span><span class="badge b-to">90 m</span></div>
+      <div class="desc">Moves misfiled videos to correct date folders; writes file inventory to studio_data.json + <b>studio_data</b> table.</div></div>
+    <div class="arrow"><div class="lbl">sorted raw files</div><div class="line">──▶</div></div>
+    <div class="card studio"><div class="name">Converter</div>
+      <div class="badges"><span class="badge b-sched">every 12 h</span><span class="badge b-py">Python</span><span class="badge b-to">90 m</span></div>
+      <div class="desc">FFmpeg-transcodes videos into studioFilesMini/{raw,post,tyd}; generates mid-video thumbnails and stores metadata in MySQL.</div></div>
+    <div class="arrow"><div class="lbl">studioFilesMini/<br>{raw, post}</div><div class="line">──▶</div></div>
+    <div class="card studio"><div class="name">Check if raw has post files</div>
+      <div class="badges"><span class="badge b-sched">every 6 h</span><span class="badge b-py">Python</span></div>
+      <div class="desc">When the L/M/R triplet exists in post/, sets <b>matched_transcriptions.post_processed = 1</b> — the gate for SignBank upload.</div></div>
+    <div class="arrow"><div class="lbl">upload gate</div><div class="line">──▶</div></div>
+    <div class="ext db"><div class="name">SignBank</div><div class="desc">video upload API</div></div>
+    <div class="arrow" style="min-width:30px"></div>
+    <div class="stack">
+      <div class="card studio"><div class="name">Convert Livelink videos</div>
+        <div class="badges"><span class="badge b-sched">daily 22:00</span><span class="badge b-py">Python</span><span class="badge b-to">90 m</span></div>
+        <div class="desc">FFmpeg .mov → web .mp4 from takes1–12 into llVideos/; copies *_raw.csv to llcsv/.</div></div>
+      <div class="card studio"><div class="name">Clean lock files</div>
+        <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-php">PHP</span><span class="badge b-to">30 m</span></div>
+        <div class="desc">Deletes stale .lock files (&gt;24 h, no paired .hamer) from studioFilesMini/raw/.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAGE 2: Annotation + Maintenance ============ -->
+<div class="page">
+  <h2 class="h-annot">3 · Annotation / linguistics pipeline</h2>
+  <div class="pipeline-desc">ELAN annotation files (EAF/SRT) are the source of truth for sign-language transcriptions. Their tiers are synced into the <b>sentences</b> table, enriched with lemma lookups, and finally served to the front end as cached theme queries.</div>
+  <div class="flow">
+    <div class="ext"><div class="name">EAF / SRT files</div><div class="desc">/web/zin/eaf/zin/<br>ELAN annotation tiers</div></div>
+    <div class="arrow"><div class="lbl">parse tiers</div><div class="line">──▶</div></div>
+    <div class="stack">
+      <div class="card annot"><div class="name">Sync EAF to Database</div>
+        <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-php">PHP</span><span class="badge b-to">30 m</span></div>
+        <div class="desc">Extracts Nederlands, Gebaar-voor-gebaar and Signbank-ID tiers → sentences.zinStringEAF / gvg / glosses; tracks eaf_sync_status.</div></div>
+      <div class="card annot"><div class="name">Update field gvg at sentences</div>
+        <div class="badges"><span class="badge b-sched">daily</span><span class="badge b-py">Python</span></div>
+        <div class="desc">Parses the “Gebaar-voor-gebaar” tier from SRT files → JSON gloss array in sentences.gvg.</div></div>
+    </div>
+    <div class="arrow"><div class="lbl">sentences table</div><div class="line">──▶</div></div>
+    <div class="card annot"><div class="name">convert zinString to LemmaList</div>
+      <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-py">Python</span></div>
+      <div class="desc">Splits sentences.zinString into words, looks each up in <b>hh_words</b>, writes sentences.lemmaList (JSON).</div></div>
+    <div class="arrow"><div class="lbl">enriched data</div><div class="line">──▶</div></div>
+    <div class="ext db"><div class="name">MySQL</div><div class="desc">admin_gebarenoverleg<br>sentences · form_data · matched_transcriptions</div></div>
+    <div class="arrow"><div class="lbl">themes, 24 h cache</div><div class="line">──▶</div></div>
+    <div class="card annot"><div class="name">Get Themas</div>
+      <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-php">PHP</span><span class="badge b-to">30 m</span></div>
+      <div class="desc">Serves distinct themes (with video candidates) from form_data as JSON; 24-hour file cache to spare the DB.</div></div>
+  </div>
+
+  <h2 class="h-maint">4 · Backup &amp; monitoring (independent safety net)</h2>
+  <div class="pipeline-desc">These services have no pipeline order — they run independently to protect data and keep the infrastructure the other pipelines rely on (disk space, the rclone mount, the database) healthy.</div>
+  <div class="flow">
+    <div class="card maint"><div class="name">MySQL Backup</div>
+      <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-php">PHP</span><span class="badge b-to">60 m</span></div>
+      <div class="desc">Hourly dumps of 4 critical tables, daily for the rest; keeps hourlies 14 days, then one per day for 1 year.</div></div>
+    <div class="arrow" style="min-width:24px"></div>
+    <div class="card maint"><div class="name">Backup Zin EAF/SRT files</div>
+      <div class="badges"><span class="badge b-sched">daily</span><span class="badge b-py">Python</span><span class="badge b-to">90 m</span></div>
+      <div class="desc">ZIPs all .eaf/.srt from /web/zin/eaf/zin/ to the rclone mount; keeps the last 3 archives.</div></div>
+    <div class="arrow" style="min-width:24px"></div>
+    <div class="card maint"><div class="name">Check Disk</div>
+      <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-py">Python</span></div>
+      <div class="desc">Writes root-filesystem stats to diskCheck.json; e-mails an alert via Mailjet when free space drops below 30 %.</div></div>
+    <div class="arrow" style="min-width:24px"></div>
+    <div class="card maint"><div class="name">Rclone Mount Monitor</div>
+      <div class="badges"><span class="badge b-sched">hourly</span><span class="badge b-py">Python</span><span class="badge b-to">5 m</span></div>
+      <div class="desc">Verifies the “signcollect” rclone mount process is alive and the mount is readable; alerts on FUSE errors or crashes.</div></div>
+    <div class="arrow" style="min-width:24px"></div>
+    <div class="ext"><div class="name">Mailjet</div><div class="desc">e-mail alerts to admin</div></div>
+  </div>
+
+  <div class="pipeline-desc" style="margin-top:14px"><b>Scheduler behaviors (scheduler.py):</b> 20-worker thread pool · per-service timeout (default 30 min, configurable) with automatic process kill · stuck “running” services cleaned after 3 h · heartbeat to watchdog.log every 5 min with watchdog alerts after 10 min silence · per-service log file (&lt;service&gt;.log) in its working directory · graceful shutdown on SIGINT/SIGTERM.</div>
+</div>
+
+<!-- ============ PAGE 3: Reference table ============ -->
+<div class="page">
+  <h1 style="font-size:18px">Service reference</h1>
+  <div class="subtitle">All 17 services from config.json — schedule, runtime and purpose</div>
+  <table>
+    <tr><th style="width:150px">Service</th><th style="width:78px">Schedule</th><th style="width:46px">Runtime</th><th style="width:52px">Timeout</th><th style="width:225px">Script</th><th>Purpose</th></tr>
+    <tr><td class="svc">Get Themas</td><td>hourly</td><td>PHP</td><td>30 m</td><td class="mono">/web/zin/api/getThemas.php</td><td>Serves distinct themes (with video candidates) from form_data as JSON, with a 24-hour cache.</td></tr>
+    <tr><td class="svc">Clean lock files</td><td>hourly</td><td>PHP</td><td>30 m</td><td class="mono">/web/cleanLockFiles.php</td><td>Deletes .lock files older than 24 h from studioFilesMini/raw/ when no paired .hamer file exists.</td></tr>
+    <tr><td class="svc">Converter</td><td>every 12 h</td><td>Python</td><td>90 m</td><td class="mono">/web/helpScripts/convert.py</td><td>FFmpeg-transcodes studio videos into studioFilesMini/{raw,post,tyd}, generates thumbnails, updates video metadata in MySQL; skips files &gt; 1 GB.</td></tr>
+    <tr><td class="svc">MySQL Backup</td><td>hourly</td><td>PHP</td><td>60 m</td><td class="mono">/web/helpScripts/mysqlBackup.php</td><td>Hourly backups of 4 critical tables (CameraRecords, form_data, matched_transcriptions, sentences), daily for others; 14-day hourly + 1-year daily retention.</td></tr>
+    <tr><td class="svc">Check Disk</td><td>hourly</td><td>Python</td><td>30 m*</td><td class="mono">~/pythonCron/checkDisk.py</td><td>Monitors root-filesystem usage, writes diskCheck.json, e-mails a Mailjet alert below 30 % free space.</td></tr>
+    <tr><td class="svc">Backup Zin EAF/SRT files</td><td>daily</td><td>Python</td><td>90 m</td><td class="mono">/web/helpScripts/zinBackup.py</td><td>ZIPs all .eaf/.srt annotation files to the rclone mount (studioFiles/zinBackup); keeps the last 3 archives.</td></tr>
+    <tr><td class="svc">Move StudioFiles</td><td>every 6 h</td><td>Python</td><td>90 m</td><td class="mono">/web/helpScripts/check_studiofiles.py</td><td>Moves misfiled raw videos to the correct date folders via rclone; writes per-date file inventory to studio_data.json and the studio_data table.</td></tr>
+    <tr><td class="svc">Check if raw has post files</td><td>every 6 h</td><td>Python</td><td>30 m*</td><td class="mono">/web/tempScripts/compareFiles.py</td><td>Compares raw vs post folders; marks matched_transcriptions.post_processed = 1 when the full L/M/R triplet exists — gates SignBank upload.</td></tr>
+    <tr><td class="svc">convert zinString to LemmaList</td><td>hourly</td><td>Python</td><td>30 m*</td><td class="mono">/web/josBoard/lemma_lookup.py</td><td>Extracts words from sentences.zinString, resolves lemmas via hh_words, writes sentences.lemmaList JSON (falls back to the original word).</td></tr>
+    <tr><td class="svc">Update field gvg at sentences</td><td>daily</td><td>Python</td><td>30 m*</td><td class="mono">/web/zin/eaf/zin/GvGtoSql.py</td><td>Parses the “Gebaar-voor-gebaar” tier from SRT files and updates sentences.gvg with a JSON gloss array.</td></tr>
+    <tr><td class="svc">sync Vicon files (rsync)</td><td>daily 02:30</td><td>Python</td><td>120 m</td><td class="mono">~/viconSync/sync_vicon_rsync.py</td><td>Pulls FBX/GLB/CSV/JSON/Shogun captures from the Vicon PC over SSH with incremental caching (full rescan weekly); converts FBX → GLB on arrival.</td></tr>
+    <tr><td class="svc">match Vicon FBX/CSV files</td><td>daily 23:00</td><td>Python</td><td>30 m*</td><td class="mono">/web/mocap/matchVicon.py</td><td>Matches synced FBX/CSV files to mocap_files records by gloss + take; fills vicon_fbx / vicon_csv columns.</td></tr>
+    <tr><td class="svc">Convert Livelink videos</td><td>daily 22:00</td><td>Python</td><td>90 m</td><td class="mono">/web/mocap/convert.py</td><td>FFmpeg-converts Livelink .mov recordings (takes1–12) to web-friendly .mp4 in llVideos/; copies *_raw.csv files alongside.</td></tr>
+    <tr><td class="svc">Sync Mocap Files</td><td>every 6 h</td><td>Python</td><td>24 h</td><td class="mono">~/pythonCron/sync_mocap_files.py</td><td>rclone-uploads FBX/GLB/CSV/JSON/Shogun files to SharePoint (signcollect:/studioFiles/mocapFiles); deletes local Shogun files after size-verified sync.</td></tr>
+    <tr><td class="svc">Cleanup OBS from Vicon PC</td><td>weekly 04:00</td><td>Python</td><td>30 m</td><td class="mono">~/viconSync/cleanup_obs.py</td><td>Deletes OBS .mkv and Shogun capture files from the Vicon PC, but only after verifying size-matched copies exist locally or on the rclone remote.</td></tr>
+    <tr><td class="svc">Rclone Mount Monitor</td><td>hourly</td><td>Python</td><td>5 m</td><td class="mono">~/pythonCron/rclone_monitor.py</td><td>Checks the signcollect rclone mount process and mount readability; reports PID/CPU/memory and alerts on FUSE errors or crashes.</td></tr>
+    <tr><td class="svc">Sync EAF to Database</td><td>hourly</td><td>PHP</td><td>30 m</td><td class="mono">/web/zin/syncEafToDatabase.php</td><td>Extracts Nederlands, Gebaar-voor-gebaar and Signbank-ID tiers from EAF files into sentences (zinStringEAF, gvg, glosses); tracks eaf_sync_status per record.</td></tr>
+  </table>
+  <div class="footer">* default scheduler timeout (no explicit timeout_minutes in config.json). Source: config.json + script analysis, 2026-06-10. Scheduler: scheduler.py — retries failed services daily 06:00–06:30, cleans services stuck “running” &gt; 3 h.</div>
+</div>
+
+</body>
+</html>

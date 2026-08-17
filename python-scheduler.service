@@ -1,0 +1,40 @@
+[Unit]
+Description=Python Cron Scheduler v2
+After=network.target
+Documentation=file:///home/gomer/pythonCron/CLAUDE.md
+
+[Service]
+Type=simple
+User=gomer
+Group=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/scheduler_v2.py
+Restart=always
+RestartSec=10
+
+# Watchdog integration - systemd will restart if no sd_notify within this time
+# Disabled for now since we use our own watchdog
+# WatchdogSec=300
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+# Resource limits
+MemoryMax=512M
+TasksMax=100
+
+# Security hardening (relaxed to allow /web writes)
+NoNewPrivileges=yes
+ProtectSystem=full
+ReadWritePaths=/home/gomer/pythonCron /home/gomer/servicesRecords.json /web /tmp
+PrivateTmp=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Logging
+StandardOutput=append:/home/gomer/pythonCron/scheduler_v2.log
+StandardError=append:/home/gomer/pythonCron/scheduler_v2.log
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,7 @@ Features:
 """
 
 import json
+import os
 import signal
 import sys
 import time
@@ -25,21 +26,42 @@ from lib.health_monitor import HealthMonitor
 from lib.service_executor import ServiceExecutor
 from lib.config_validator import ConfigValidator
 
+# Where this checkout is, and where its writable runtime data goes.
+#
+# Every one of these paths used to be the literal string
+# '/home/gomer/pythonCron'. On the production host that is precisely what
+# dirname(__file__) resolves to, so production keeps the files it has;
+# anywhere else the scheduler now runs from wherever it was installed rather
+# than refusing to start on a log file it cannot open at import time.
+#
+# STATE_DIR splits the writable half off from the code, for an installation
+# whose code directory is replaced wholesale on each deploy - /opt/pythonCron
+# with /var/opt/pythonCron beside it, say. It defaults to BASE_DIR, which is
+# the layout production already has.
+BASE_DIR = os.environ.get('PYTHONCRON_HOME') or os.path.dirname(os.path.abspath(__file__))
+STATE_DIR = os.environ.get('PYTHONCRON_STATE_DIR') or BASE_DIR
+try:
+    os.makedirs(STATE_DIR, exist_ok=True)
+except OSError:
+    pass
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/home/gomer/pythonCron/scheduler_v2.log')
+        logging.FileHandler(os.path.join(STATE_DIR, 'scheduler_v2.log'))
     ]
 )
 logger = logging.getLogger('scheduler_v2')
 
-# Configuration paths
-DEFAULT_CONFIG_PATH = '/home/gomer/pythonCron/config.json'
-DEFAULT_DB_PATH = '/home/gomer/pythonCron/scheduler_state.db'
-DEFAULT_WATCHDOG_LOG = '/home/gomer/pythonCron/watchdog.log'
+# Configuration paths. The config is code-adjacent by default and the state is
+# not, which is what lets a host keep its service list somewhere the deploy
+# does not overwrite - pass --config to move it.
+DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
+DEFAULT_DB_PATH = os.path.join(STATE_DIR, 'scheduler_state.db')
+DEFAULT_WATCHDOG_LOG = os.path.join(STATE_DIR, 'watchdog.log')
 
 # Timing constants
 MAIN_LOOP_INTERVAL = 60  # seconds
@@ -56,6 +78,7 @@ class Scheduler:
         config_path: str = DEFAULT_CONFIG_PATH,
         db_path: str = DEFAULT_DB_PATH,
         watchdog_log: str = DEFAULT_WATCHDOG_LOG,
+        log_dir: str = STATE_DIR,
         dry_run: bool = False
     ):
         """
@@ -65,6 +88,7 @@ class Scheduler:
             config_path: Path to config.json
             db_path: Path to SQLite database
             watchdog_log: Path to watchdog log file
+            log_dir: Directory for the per-service log files
             dry_run: If True, don't actually execute services
         """
         self.config_path = config_path
@@ -83,6 +107,7 @@ class Scheduler:
         self.executor = ServiceExecutor(
             self.state_manager,
             self.circuit_breaker,
+            log_dir=log_dir,
             max_workers=20
         )
         self.health_monitor = HealthMonitor(

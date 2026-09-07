@@ -68,7 +68,7 @@ class ServiceExecutor:
         self,
         state_manager: 'StateManager',
         circuit_breaker: 'CircuitBreaker',
-        log_dir: str = '/home/gomer/pythonCron',
+        log_dir: Optional[str] = None,
         max_workers: int = 20
     ):
         """
@@ -77,12 +77,19 @@ class ServiceExecutor:
         Args:
             state_manager: StateManager instance
             circuit_breaker: CircuitBreaker instance
-            log_dir: Directory for service log files
+            log_dir: Directory for service log files. Defaults to
+                PYTHONCRON_STATE_DIR, else the directory holding this package -
+                i.e. the repository root, which is where these logs have
+                always been written.
             max_workers: Maximum concurrent service executions
         """
         self.state_manager = state_manager
         self.circuit_breaker = circuit_breaker
-        self.log_dir = log_dir
+        self.log_dir = (
+            log_dir
+            or os.environ.get('PYTHONCRON_STATE_DIR')
+            or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._running_lock = threading.Lock()
         self._shutdown = False

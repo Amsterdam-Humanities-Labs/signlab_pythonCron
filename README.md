@@ -158,8 +158,23 @@ See `SYSTEMD_SETUP_INSTRUCTIONS.md` for the full procedure and
 
 ## Operational notes
 
-- **Paths are absolute and host-specific.** Configs hardcode `/home/gomer/pythonCron`,
-  `/web`, and `/web/zin`. The code will not run elsewhere without editing these.
+- **Service paths in the configs are absolute and host-specific.** `config.json` and
+  `services_config.json` name `/web`, `/web/zin` and `/home/gomer/viconSync`; those are
+  the jobs' own paths and a different host needs its own service list.
+- **The scheduler itself is relocatable.** `scheduler_v2.py` and `lib/` resolve their
+  config, SQLite state and log files from where the checkout actually lives, so
+  `/home/gomer/pythonCron` is a default, not a requirement. Two environment variables
+  override it:
+
+  | Variable | Default | What it moves |
+  |---|---|---|
+  | `PYTHONCRON_HOME` | the directory holding `scheduler_v2.py` | `config.json` lookup |
+  | `PYTHONCRON_STATE_DIR` | `PYTHONCRON_HOME` | `scheduler_v2.log`, `watchdog.log`, `scheduler_state.db`, per-service logs |
+
+  Splitting the two lets a deploy replace the code directory wholesale without
+  destroying the state that records when each service last ran. The wrapper
+  architecture (`service_wrapper.py`, `watchdog_daemon.py`) and the standalone job
+  scripts still hardcode `/home/gomer/pythonCron`.
 - **Logs and state are not in version control.** `logs/`, `state/`, and `scheduler_state.db`
   are gitignored; they are machine-local runtime data.
 - **Logs grow very large** — individual files reach 50–100 MB and rotated archives had

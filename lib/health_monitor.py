@@ -45,7 +45,11 @@ class HealthMonitor(threading.Thread):
         """
         super().__init__(daemon=True, name='HealthMonitor')
         self.state_manager = state_manager
-        self.watchdog_log_path = watchdog_log_path or '/home/gomer/pythonCron/watchdog.log'
+        self.watchdog_log_path = watchdog_log_path or os.path.join(
+            os.environ.get('PYTHONCRON_STATE_DIR')
+            or os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'watchdog.log'
+        )
         self._stop_event = threading.Event()
         self._last_heartbeat = datetime.now()
         self._heartbeat_lock = threading.Lock()

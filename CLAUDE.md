@@ -69,8 +69,15 @@ cat state/<Service_Name>.json
 
 ## Conventions
 
-- Paths are absolute and host-specific (`/home/gomer/pythonCron`, `/web`, `/web/zin`).
-  Preserve this style; the code does not currently support relocation.
+- Service paths inside `config.json` / `services_config.json` are absolute and
+  host-specific (`/web`, `/web/zin`, `/home/gomer/viconSync`). They belong to the jobs,
+  not to this tree.
+- `scheduler_v2.py` and `lib/` are relocatable: they derive their config, state DB and
+  log paths from the checkout's own location, overridable with `PYTHONCRON_HOME` and
+  `PYTHONCRON_STATE_DIR`. On production both resolve to `/home/gomer/pythonCron`, so
+  nothing moved. Do not reintroduce a literal `/home/gomer/pythonCron` there.
+  `service_wrapper.py`, `watchdog_daemon.py` and the standalone job scripts still
+  hardcode it.
 - Secrets come from the environment, loaded from `/web/zin/.env`
   (`DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`, `DISCORD_WEBHOOK_URL`).
   Never hardcode credentials — nothing in this repo contains any today.

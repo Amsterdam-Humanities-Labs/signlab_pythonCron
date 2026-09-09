@@ -8,6 +8,79 @@ checks) on a fixed schedule, tracks their state, and restarts them when they fai
 > on the production host and drives real data pipelines. Read [Operational notes](#operational-notes)
 > before running anything.
 
+## Where it runs, and status
+
+**Status: production.** This scheduler executes real jobs against real data on
+the **signcollect core server** — database backups, media conversion, mocap
+file matching, the Signbank gloss refresh. A mistake in a config entry here is
+a mistake that runs, unattended, on a schedule.
+
+Two installations exist, and they are laid out differently:
+
+| Host | Code | Job list | State and logs |
+|---|---|---|---|
+| signcollect core server (production) | `/home/gomer/pythonCron` | `config.json` and `services_config.json` in that directory | the same directory |
+| demo hosts (`dev2`, `dev-1`) | `/opt/pythonCron` | `/etc/opt/pythonCron/config.json` | `/var/opt/pythonCron` |
+
+The three-way split on the demo hosts is the FHS layout for an add-on
+application: `/opt/<name>` for the package, `/etc/opt/<name>` for its host
+configuration, `/var/opt/<name>` for its variable data. It earns its keep
+beyond tidiness — `/opt/pythonCron` is root-owned and replaced wholesale by
+every deploy, so the service user cannot rewrite its own code, and
+`scheduler_state.db` survives in `/var/opt/pythonCron` because the deploy never
+touches it. Losing that database makes every job read as never-executed and
+therefore due immediately, which for this job set means an unscheduled
+7,500-request rebuild against a third-party service.
+
+`PYTHONCRON_HOME` and `PYTHONCRON_STATE_DIR` (see [Operational notes](#operational-notes))
+are what make that split possible. Production predates them and still runs out
+of one directory.
+
+TODO: confirm whether production is expected to move to the `/opt` layout, or
+to stay at `/home/gomer/pythonCron`.
+
+## Deployment
+
+**This is not a docroot component, and it must never become one.**
+
+Every web component of this estate is deployed by
+`signlab_signcollect-stack`'s `interface_deploy/`, from a row in
+`scripts/repos.tsv` that maps a repository to `<docroot>/<directory>`. That is
+the only destination the bootstrap knows. A `repos.tsv` row for pythonCron
+would therefore clone a systemd service into the web root and **publish its
+source over HTTP** — the config files, the job paths, the wrapper scripts,
+`.env` handling and all. It is not merely the wrong tool here; it is a
+disclosure bug.
+
+So it gets its own installer, `interface_deploy/scripts/pythoncron.sh`, which:
+
+1. clones this repository on the host into a build directory *outside* the
+   docroot, and rewrites production hostnames out of it;
+2. copies the tree into root-owned `/opt/pythonCron`;
+3. installs this host's job list at `/etc/opt/pythonCron/config.json` and
+   replaces `/opt/pythonCron/config.json` with a symlink to it;
+4. renders `python-scheduler.service` from a template and enables it.
+
+On production the same unit is installed by hand from
+`python-scheduler.service` in this repository (and the sixteen `service-*`
+wrapper units from `setup_systemd_services.sh`). Either way the deployment
+artefact is a **systemd unit**, not a URL.
+
+### Production's `config.json` is deliberately not used on demo hosts
+
+The demo installs exactly one job — the Signbank ECV refresh — from
+`interface_deploy/config/pythoncron.demo.json`, with the docroot
+parameterised. Production's own seventeen-entry `config.json` is not copied,
+and the reason is specific rather than cautious: three of its jobs
+(`mocap/matchVicon.py`, `mocap/convert.py`, `zin/syncEafToDatabase.php`) name
+paths that **also exist on a demo host**, so `scheduler_v2` would find them,
+consider them valid, and start running them against demo data unasked. The
+validator cannot help — a path that exists is a path that passes.
+
+That is also why `/opt/pythonCron/config.json` is replaced by a symlink to
+`/etc/opt/pythonCron/config.json`: even a hand-run `python3 scheduler_v2.py`
+from inside the code directory cannot pick up a checked-in production job list.
+
 ## Architecture
 
 Two scheduling systems currently run **side by side**. This is deliberate but transitional —
@@ -79,8 +152,39 @@ A `config.json` entry:
 }
 ```
 
-`time_or_minute` selects the scheduling mode: `"minute"` runs every `interval_minutes`,
-`"time"` runs daily at `scheduled_time` (e.g. `"22:30"`).
+`config.json` is a **flat JSON array** — no wrapper object, no keys above it — and
+each element is one job. Where the file lives depends on the host: the directory
+holding `scheduler_v2.py` by default, `PYTHONCRON_HOME` if set, or whatever
+`--config` names (the demo passes `/etc/opt/pythonCron/config.json`).
+
+| Field | Required | Meaning |
+|---|---|---|
+| `service_name` | yes | Display name and state key. Must be unique — a duplicate is a validation error, and the second entry is dropped. |
+| `executable` | yes | Absolute path to the interpreter, e.g. `/usr/bin/php`, `/usr/bin/python3`. A missing or non-executable path is a *warning*, not an error. |
+| `path` | yes | Absolute path to the script to run. A path that does not exist is a hard **error** and the job is skipped. |
+| `working_dir` | yes | Directory to run it in. Must exist. |
+| `interval_minutes` | yes | Positive number. With `time_or_minute: "minute"`, how often to run. |
+| `time_or_minute` | yes | `"minute"` (every `interval_minutes`) or `"time"` (once a day at `scheduled_time`). Anything else is an error. |
+| `scheduled_time` | with `"time"` | `HH:MM`, 24-hour. Required and format-checked when `time_or_minute` is `"time"`. |
+| `timeout_minutes` | no | Positive number; the job is killed past it. |
+| `execute_immediately` | no | Run once at scheduler start rather than waiting out the first interval. |
+
+Validate before trusting it — this reports every error and warning and runs nothing:
+
+```bash
+python3 scheduler_v2.py --config /etc/opt/pythonCron/config.json --validate-config
+```
+
+**Every path in a `config.json` entry is absolute and host-specific**, which is
+what makes a job list non-portable between hosts and is the reason the demo
+writes its own rather than shipping production's — see
+[Deployment](#deployment). Nothing in the format identifies the host it was
+written for, and the validator's only test is whether the path exists.
+
+`services_config.json` is the other architecture's file and is not
+interchangeable with this one: it is keyed by service name and nests
+`execution`, `health`, `retry` and `logging` blocks per service. A job present
+in both files is scheduled twice.
 
 ## Secrets
 
@@ -183,6 +287,39 @@ See `SYSTEMD_SETUP_INSTRUCTIONS.md` for the full procedure and
 - **Never `rm` an active log file.** Running processes hold open handles, so the space is
   not reclaimed and the process keeps writing to a deleted inode. Truncate instead:
   `: > logs/Some_Service.log`
+
+## Dependencies
+
+pythonCron does not import anything from the rest of the estate — it launches
+processes. The coupling runs the other way, and is by job list rather than by
+code:
+
+- **`signlab_signCollect-v2`** — its Signbank connector
+  (`signbank_sync/ecv_refresh.php`) names pythonCron as its scheduler in its
+  own header and prints the `config.json` entry it expects. That job rebuilds
+  the shared gloss dump at `<docroot>/signbank_data/glosses_transformed.json`,
+  which four other components read by absolute path. Running the job hourly is
+  not the same as refreshing hourly: `ecv_refresh.php` decides for itself
+  whether a rebuild is due, from a schedule an admin sets on the connector page
+  and which defaults to off. That indirection is deliberate — `config.json`
+  belongs to a root-owned systemd unit and the web server must not have to
+  rewrite it.
+- **`signlab_zin`, `signlab_mocap`, and the docroot's `helpScripts/`** — most
+  of production's seventeen jobs are PHP or Python files inside the web root.
+  The scheduler needs write access to it, which is why the unit relaxes
+  `ProtectSystem` and names the docroot in `ReadWritePaths`.
+- **Discord, Mailjet, MySQL** — `discord_bot.py`, `checkDisk.py` and
+  `server_monitor.py` reach outward; all three read their credentials from the
+  environment (see [Secrets](#secrets)).
+- **`signlab_client_monitor_api`** — `python_client.py` and `php_client.php`
+  here are that API's client library and example. `checkDisk.py`,
+  `rclone_monitor.py` and `sync_mocap_files.py` each construct a
+  `ClientMonitor` against `https://signcollect.nl/client_monitor_api/api.php`
+  and register + heartbeat there, so those three jobs appear on the client
+  monitor dashboard. The URL is hardcoded in each script; on a host that is
+  firewalled from production the calls simply fail, which is why the demo
+  installer rewrites production hostnames out of the checkout even though
+  none of these three is scheduled there.
 
 ## Migration status
 

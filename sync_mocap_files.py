@@ -12,8 +12,16 @@ import sys
 import re
 from datetime import datetime
 
-sys.path.insert(0, '/home/gomer/pythonCron')
-from python_client import ClientMonitor
+# The heartbeat client. Prefer the installed package; fall back to the copy
+# vendored in this directory, which is what a host that has never run
+# client/install.sh from signlab_client_monitor_api will find. Note the
+# fallback finds it *beside this script* rather than at a path hardcoded to
+# one particular server's home directory.
+try:
+    from signlab_client_monitor import ClientMonitor
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import ClientMonitor
 
 monitor = ClientMonitor(
     api_url="https://signcollect.nl/client_monitor_api/api.php",

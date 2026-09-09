@@ -277,8 +277,9 @@ See `SYSTEMD_SETUP_INSTRUCTIONS.md` for the full procedure and
 
   Splitting the two lets a deploy replace the code directory wholesale without
   destroying the state that records when each service last ran. The wrapper
-  architecture (`service_wrapper.py`, `watchdog_daemon.py`) and the standalone job
-  scripts still hardcode `/home/gomer/pythonCron`.
+  architecture (`service_wrapper.py`, `watchdog_daemon.py`) still hardcodes
+  `/home/gomer/pythonCron`; the standalone job scripts no longer do, since the
+  only thing they used it for was importing the heartbeat client.
 - **Logs and state are not in version control.** `logs/`, `state/`, and `scheduler_state.db`
   are gitignored; they are machine-local runtime data.
 - **Logs grow very large** — individual files reach 50–100 MB and rotated archives had
@@ -311,8 +312,14 @@ code:
 - **Discord, Mailjet, MySQL** — `discord_bot.py`, `checkDisk.py` and
   `server_monitor.py` reach outward; all three read their credentials from the
   environment (see [Secrets](#secrets)).
-- **`signlab_client_monitor_api`** — `python_client.py` and `php_client.php`
-  here are that API's client library and example. `checkDisk.py`,
+- **`signlab_client_monitor_api`** — `python_client.py` here is a verbatim
+  vendored copy of that repository's `client/` package, and `php_client.php`
+  its PHP counterpart. The three scripts below prefer the installed
+  `signlab-client-monitor` package and fall back to the vendored file beside
+  them, so nothing here needs the package to be installed and nothing here
+  needs `/home/gomer/pythonCron` on `sys.path` any more. Do not edit
+  `python_client.py`: refresh it from the package, per its own header.
+  `checkDisk.py`,
   `rclone_monitor.py` and `sync_mocap_files.py` each construct a
   `ClientMonitor` against `https://signcollect.nl/client_monitor_api/api.php`
   and register + heartbeat there, so those three jobs appear on the client

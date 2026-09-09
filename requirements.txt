@@ -1,0 +1,9 @@
+# Runtime dependencies. Nothing installs these - this estate has no build step
+# in its deploy - so read this as the record of what a host needs.
+requests>=2.25
+
+# The heartbeat client and the rotating-log setup, from the repository that
+# also holds the API they talk to. Optional: python_client.py in this
+# directory is a byte-identical vendored copy and the imports fall back to it.
+# Installing it is what lets that copy eventually be deleted.
+signlab-client-monitor @ git+https://github.com/Amsterdam-Humanities-Labs/signlab_client_monitor_api@main#subdirectory=client

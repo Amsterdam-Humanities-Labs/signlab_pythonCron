@@ -16,7 +16,6 @@ import signal
 import sys
 import time
 import logging
-import logging.handlers
 import argparse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -46,20 +45,19 @@ try:
 except OSError:
     pass
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        # 5 MB x 5, the same policy as setup_rotating_logger in the heartbeat
-        # client. python-scheduler.service sends stdout to the journal, so
-        # this handler is the only writer of the file.
-        logging.handlers.RotatingFileHandler(
-            os.path.join(STATE_DIR, 'scheduler_v2.log'),
-            maxBytes=5 * 1024 * 1024, backupCount=5)
-    ]
-)
+# Configure logging: the root logger to scheduler_v2.log (5 MB x 5) and
+# stdout. python-scheduler.service sends stdout to the journal, so this is the
+# only writer of the file.
+# Shared log setup: the installed package, else the copy vendored
+# beside this script (see README.md).
+try:
+    from signlab_client_monitor import setup_rotating_logger
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import setup_rotating_logger
+
+setup_rotating_logger(os.path.join(STATE_DIR, 'scheduler_v2.log'), stream=sys.stdout,
+                      fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('scheduler_v2')
 
 # Configuration paths. The config is code-adjacent by default and the state is

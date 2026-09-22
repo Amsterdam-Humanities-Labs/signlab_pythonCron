@@ -20,12 +20,18 @@ import time
 import signal
 import subprocess
 import psutil
-import logging
-from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 from pathlib import Path
 import traceback
 import argparse
+
+# Shared log setup and checks: the installed package, else the copy vendored
+# beside this script (see README.md).
+try:
+    from signlab_client_monitor import disk_usage, setup_rotating_logger
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import disk_usage, setup_rotating_logger
 
 class WatchdogDaemon:
     def __init__(self, config_path='/home/gomer/pythonCron/services_config.json',
@@ -60,31 +66,12 @@ class WatchdogDaemon:
         """Set up logging for the watchdog"""
         log_file = '/home/gomer/pythonCron/watchdog_daemon.log'
 
-        # Create logger
-        self.logger = logging.getLogger('watchdog_daemon')
-        self.logger.setLevel(logging.INFO)
-
-        # Create rotating file handler (100MB max, 3 backups)
-        handler = RotatingFileHandler(
-            log_file,
-            maxBytes=100 * 1024 * 1024,
-            backupCount=3
-        )
-
-        # Create formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        handler.setFormatter(formatter)
-
-        # Add handler
-        self.logger.addHandler(handler)
-
-        # Also log to console
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        # 100 MB x 3, and stdout
+        self.logger = setup_rotating_logger(
+            log_file, name='watchdog_daemon',
+            max_bytes=100 * 1024 * 1024, backup_count=3, stream=sys.stdout,
+            fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S')
 
         self.logger.info("=" * 80)
         self.logger.info("Watchdog daemon starting")
@@ -116,8 +103,7 @@ class WatchdogDaemon:
     def check_disk_space(self):
         """Check disk space and log warnings"""
         try:
-            disk = psutil.disk_usage('/')
-            used_percent = disk.percent
+            used_percent = round(disk_usage('/')['used_percent'], 1)  # psutil's percent
 
             threshold_warning = self.global_config.get('disk_space_warning_threshold_percent', 85)
             threshold_critical = self.global_config.get('disk_space_critical_threshold_percent', 95)

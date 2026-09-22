@@ -22,8 +22,6 @@ import socket
 import errno
 import shutil
 
-import logging.handlers
-
 from sc_paths import sc_path, sc_root
 
 # The install root (normally /web) is on sys.path for renderServer.video_api_client
@@ -32,10 +30,10 @@ from renderServer.video_api_client import VideoAPIClient
 
 # The heartbeat client: the installed package, else the copy beside this script.
 try:
-    from signlab_client_monitor import ClientMonitor
+    from signlab_client_monitor import ClientMonitor, setup_rotating_logger
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from python_client import ClientMonitor
+    from python_client import ClientMonitor, setup_rotating_logger
 
 # Runtime data goes beside the script (production: /home/gomer/pythonCron),
 # or under $PYTHONCRON_STATE_DIR, as scheduler_v2.py does.
@@ -56,24 +54,9 @@ LOG_FILE = LOG_DIR / "conversion_errors.log"
 SERVICE_NAME = "Convert Script"
 API_URL = 'https://signcollect.nl/renderServer'
 
-# Setup Logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-# File Handler
-# 5 MB x 5, the same policy as scheduler_v2.log.
-file_handler = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5)
-file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(file_formatter)
-logger.addHandler(file_handler)
-
-# Console Handler
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.INFO)
-console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(console_formatter)
-logger.addHandler(console_handler)
+# Root logger: conversion_errors.log (5 MB x 5, as scheduler_v2.log) and stdout.
+logger = setup_rotating_logger(str(LOG_FILE), stream=sys.stdout,
+                               fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize API client
 api_client = VideoAPIClient(API_URL)

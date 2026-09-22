@@ -22,9 +22,16 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
-from logging.handlers import RotatingFileHandler
 import traceback
 import random
+
+# Shared log setup and checks: the installed package, else the copy vendored
+# beside this script (see README.md).
+try:
+    from signlab_client_monitor import setup_rotating_logger
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import setup_rotating_logger
 
 class ServiceWrapper:
     def __init__(self, service_name, config_path='/home/gomer/pythonCron/services_config.json'):
@@ -98,31 +105,12 @@ class ServiceWrapper:
         backup_count = log_config.get('max_files', 3)
         log_level = getattr(logging, log_config.get('level', 'INFO'))
 
-        # Create logger
-        self.logger = logging.getLogger(self.service_name)
-        self.logger.setLevel(log_level)
-
-        # Create rotating file handler
-        handler = RotatingFileHandler(
-            log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count
-        )
-
-        # Create formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        handler.setFormatter(formatter)
-
-        # Add handler to logger
-        self.logger.addHandler(handler)
-
-        # Also log to console
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        # Rotating file per service, and stdout
+        self.logger = setup_rotating_logger(
+            log_file, name=self.service_name, level=log_level,
+            max_bytes=max_bytes, backup_count=backup_count, stream=sys.stdout,
+            fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S')
 
         self.logger.info(f"Service wrapper initialized for '{self.service_name}'")
 

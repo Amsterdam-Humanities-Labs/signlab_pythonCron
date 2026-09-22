@@ -26,15 +26,23 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Callable, Dict, Iterable, List, Tuple
 
-import mysql.connector
+import logging.handlers
 
-sys.path.insert(0, '/home/gomer/pythonCron')
+from sc_paths import sc_path
+
+# Runtime data goes beside the script (production: /home/gomer/pythonCron),
+# or under $PYTHONCRON_STATE_DIR, as scheduler_v2.py does.
+STATE_DIR = os.environ.get('PYTHONCRON_STATE_DIR') or os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(STATE_DIR, 'logs')
+os.makedirs(LOG_DIR, exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/home/gomer/pythonCron/logs/move_videos.log'),
+        # 5 MB x 5, the same policy as scheduler_v2.log.
+        logging.handlers.RotatingFileHandler(
+            os.path.join(LOG_DIR, 'move_videos.log'), maxBytes=5 * 1024 * 1024, backupCount=5),
         logging.StreamHandler()
     ]
 )
@@ -45,8 +53,8 @@ RCLONE_LIST_TIMEOUT_SECONDS = 3600
 RCLONE_MOVE_TIMEOUT_SECONDS = 600   # server-side rename, normally takes seconds
 RCLONE_COPY_TIMEOUT_SECONDS = 1800  # download of one converted video
 
-MINI_RAW_DIR = "/web/gebarenoverleg_media/studioFilesMini/raw"
-STUDIO_DATA_JSON = '/web/studio_data.json'
+MINI_RAW_DIR = sc_path("media_raw")
+STUDIO_DATA_JSON = sc_path("studio_data.json")
 RAW_SUBDIR = "raw"
 MIRROR_SUBDIRS = ("converted", "thumbnails")
 COUNT_PREFIXES = "LMRAB"  # order of the columns in studio_data
@@ -222,11 +230,12 @@ def execute_plan(plan: Plan) -> None:
                 logging.error(f"Failed to copy {futures[future]}: {e}")
 
 
-# Credentials come from the environment or /web/zin/.env (the DB_* keys
-# server_monitor.py reads). Never a literal in git.
+# Credentials come from the environment or <root>/zin/.env (normally
+# /web/zin/.env), the same DB_* keys server_monitor.py reads. Never a literal.
 def _load_zin_env() -> None:
+    env_file = sc_path("zin", ".env")
     try:
-        with open('/web/zin/.env') as f:
+        with open(env_file) as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
@@ -236,18 +245,20 @@ def _load_zin_env() -> None:
         pass
 
 
-_load_zin_env()
-db_config = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'user'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'admin_gebarenoverleg'),
-}
+def _db_config() -> dict:
+    _load_zin_env()
+    return {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'user': os.getenv('DB_USER', 'user'),
+        'password': os.getenv('DB_PASSWORD', ''),
+        'database': os.getenv('DB_NAME', 'admin_gebarenoverleg'),
+    }
 
 
 def get_db_connection():
+    import mysql.connector  # only needed when writing counts; keeps tests import-light
     try:
-        connection = mysql.connector.connect(**db_config)
+        connection = mysql.connector.connect(**_db_config())
         if connection.is_connected():
             return connection
     except mysql.connector.Error as err:
@@ -256,7 +267,7 @@ def get_db_connection():
 
 
 def save_counts(counts: Dict[str, List[int]]) -> None:
-    """Update /web/studio_data.json and the studio_data table with the L/M/R/A/B counts."""
+    """Update <root>/studio_data.json and the studio_data table with the L/M/R/A/B counts."""
     with open(STUDIO_DATA_JSON, 'r') as f:
         data = json.load(f)
     data.update(counts)
@@ -310,7 +321,11 @@ if __name__ == "__main__":
         main(dry_run=True)
         sys.exit(0)
 
-    from python_client import ClientMonitor
+    try:
+        from signlab_client_monitor import ClientMonitor
+    except ImportError:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from python_client import ClientMonitor
     monitor = ClientMonitor(
         api_url="https://signcollect.nl/client_monitor_api/api.php",
         client_id="move-studio-files",

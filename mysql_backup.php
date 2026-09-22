@@ -8,7 +8,7 @@
  * Ensure this script is run hourly via a cron job.
  */
 
-require_once '/home/gomer/pythonCron/php_client.php';
+require_once __DIR__ . '/php_client.php';
 
 // Initialize Client Monitor
 $clientMonitor = new ClientMonitor(

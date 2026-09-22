@@ -22,24 +22,37 @@ import socket
 import errno
 import shutil
 
-# Add the parent directory to sys.path to import the video_api_client
-sys.path.insert(0, '/web')
+import logging.handlers
+
+from sc_paths import sc_path, sc_root
+
+# The install root (normally /web) is on sys.path for renderServer.video_api_client
+sys.path.insert(0, sc_root())
 from renderServer.video_api_client import VideoAPIClient
 
-# Add ClientMonitor
-sys.path.insert(0, '/home/gomer/pythonCron')
-from python_client import ClientMonitor
+# The heartbeat client: the installed package, else the copy beside this script.
+try:
+    from signlab_client_monitor import ClientMonitor
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import ClientMonitor
+
+# Runtime data goes beside the script (production: /home/gomer/pythonCron),
+# or under $PYTHONCRON_STATE_DIR, as scheduler_v2.py does.
+STATE_DIR = os.environ.get('PYTHONCRON_STATE_DIR') or os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = Path(STATE_DIR) / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuration
-BASE_DIR = Path("/web/gebarenoverleg_media/studioFiles")
-OUTPUT_DIR_RAW = Path("/web/gebarenoverleg_media/studioFilesMini/raw")
-OUTPUT_DIR_POST = Path("/web/gebarenoverleg_media/studioFilesMini/post")
-TYD_DIR_POST = Path("/web/gebarenoverleg_media/studioFilesMini/tyd")
-UPLOADS_DIR = Path("/web/uploads")
-SERVICE_RECORDS_PATH = Path("/web/servicesRecords.json")
+BASE_DIR = Path(sc_path("media", "studioFiles"))
+OUTPUT_DIR_RAW = Path(sc_path("media_raw"))
+OUTPUT_DIR_POST = Path(sc_path("media_post"))
+TYD_DIR_POST = Path(sc_path("media", "studioFilesMini", "tyd"))
+UPLOADS_DIR = Path(sc_path("uploads"))
+SERVICE_RECORDS_PATH = Path(sc_path("servicesRecords.json"))
 LOCKFILE_PATH = Path("/tmp/process_files.lock")
-SKIPPED_FILES_LOG = Path("/home/gomer/pythonCron/logs/skipped_files.log")
-LOG_FILE = Path("/home/gomer/pythonCron/logs/conversion_errors.log")
+SKIPPED_FILES_LOG = LOG_DIR / "skipped_files.log"
+LOG_FILE = LOG_DIR / "conversion_errors.log"
 SERVICE_NAME = "Convert Script"
 API_URL = 'https://signcollect.nl/renderServer'
 
@@ -48,7 +61,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # File Handler
-file_handler = logging.FileHandler(LOG_FILE)
+# 5 MB x 5, the same policy as scheduler_v2.log.
+file_handler = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5)
 file_handler.setLevel(logging.INFO)
 file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_formatter)

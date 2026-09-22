@@ -5,8 +5,14 @@ import sys
 import glob
 from datetime import datetime
 
-sys.path.insert(0, '/home/gomer/pythonCron')
-from python_client import ClientMonitor
+from sc_paths import sc_path
+
+# The heartbeat client: the installed package, else the copy beside this script.
+try:
+    from signlab_client_monitor import ClientMonitor
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from python_client import ClientMonitor
 
 # Initialize Client Monitor
 monitor = ClientMonitor(
@@ -17,8 +23,8 @@ monitor = ClientMonitor(
     heartbeat_interval=86400  # 1440 minutes (24 hours)
 )
 
-SOURCE_DIR = "/web/zin/eaf/zin/"
-REMOTE_DIR = "/web/gebarenoverleg_media/studioFiles/zinBackup/"
+SOURCE_DIR = sc_path("zin", "eaf", "zin") + "/"
+REMOTE_DIR = sc_path("media", "studioFiles", "zinBackup") + "/"
 LOCAL_TMP = "/tmp"
 KEEP_BACKUPS = 3
 

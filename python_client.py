@@ -27,11 +27,13 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import socket
+import subprocess
 import sys
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 
 import requests
 
@@ -324,6 +326,7 @@ def setup_rotating_logger(
     to_stream: bool = True,
     stream=None,
     fmt: str = DEFAULT_FORMAT,
+    datefmt: Optional[str] = None,
 ) -> logging.Logger:
     """Configure and return a logger that writes to a size-rotated file.
 
@@ -340,6 +343,7 @@ def setup_rotating_logger(
         stream: Which stream. `None` means stderr, the logging default; pass
             `sys.stdout` where the script it replaces used stdout.
         fmt: Format string.
+        datefmt: Date format for `%(asctime)s`; `None` is the logging default.
 
     Calling it twice for the same logger replaces the handlers rather than
     adding a second set, so a script that is imported as well as run does not
@@ -356,7 +360,7 @@ def setup_rotating_logger(
         logger.removeHandler(handler)
         handler.close()
 
-    formatter = logging.Formatter(fmt)
+    formatter = logging.Formatter(fmt, datefmt=datefmt)
 
     file_handler = RotatingFileHandler(
         path, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
@@ -372,3 +376,229 @@ def setup_rotating_logger(
         logger.addHandler(stream_handler)
 
     return logger
+
+
+# ---------------------------------------------------------------------------
+# Disk and mount checks
+#
+# The same `/` disk check ran in checkDisk.py (df), server_monitor.py (shutil),
+# watchdog_daemon.py and metrics_collector.py (psutil), and two mount checks in
+# rclone_monitor.py and server_monitor.py. All four disk readings are the same
+# statvfs numbers; these return them once. Unlike the heartbeat, checks raise:
+# a check that cannot run is a failed check, and the caller reports it.
+# ---------------------------------------------------------------------------
+
+
+def disk_usage(path: str = "/") -> Dict[str, Any]:
+    """Disk usage of the filesystem holding `path`.
+
+    `total`, `used`, `free` are bytes and equal `df -B1 --output=size,used,avail`
+    (and psutil's). `free_percent` is free/total. `used_percent` is df's
+    `Use%` and psutil's `percent` before rounding: used/(used+free). Raises
+    OSError if `path` cannot be read.
+    """
+    usage = shutil.disk_usage(path)
+    return {
+        "path": path,
+        "total": usage.total,
+        "used": usage.used,
+        "free": usage.free,
+        "free_percent": usage.free / usage.total * 100,
+        "used_percent": usage.used / (usage.used + usage.free) * 100,
+    }
+
+
+def mount_responds(path: str, timeout: int = 5) -> Tuple[bool, Optional[str]]:
+    """Whether `ls path` answers within `timeout` seconds: (ok, error or None).
+
+    Catches the two ways a dead FUSE mount shows itself - a hang and
+    "Transport endpoint is not connected" - without hanging the caller.
+    """
+    try:
+        result = subprocess.run(
+            ["timeout", str(timeout), "ls", path],
+            capture_output=True,
+            text=True,
+            timeout=timeout + 1,
+        )
+        if result.returncode == 0:
+            return (True, None)
+        elif "Transport endpoint is not connected" in result.stderr:
+            return (False, "Mount disconnected (FUSE endpoint not connected)")
+        elif result.returncode == 124:  # timeout exit code
+            return (False, "Mount not responding (timeout)")
+        else:
+            return (False, f"Mount error: {result.stderr.strip()}")
+    except subprocess.TimeoutExpired:
+        return (False, "Mount not responding (timeout)")
+    except Exception as e:
+        return (False, f"Mount test failed: {str(e)}")
+
+
+def mount_read_write(mount_point: str, test_dir: str, timeout: int = 15) -> None:
+    """Check `mount_point` is mounted, then write, read back and delete a file.
+
+    Returns None when all of that works. Raises RuntimeError naming the step
+    that failed, or subprocess.TimeoutExpired if the mount hangs - callers
+    tell the two apart, a hang being the usual rclone failure.
+
+    `os.path.ismount()` rather than `mountpoint -q`: the latter is confused by
+    the stacked FUSE mounts that appear when rclone restarts while the caller
+    runs in a private mount namespace. Every file step runs in a subprocess
+    with a timeout, because a hung mount blocks the calling thread forever.
+    """
+    test_file = os.path.join(test_dir, "monitor_test.txt")
+    token = f"monitor-{datetime.now().isoformat()}"
+
+    if not os.path.ismount(mount_point):
+        raise RuntimeError(
+            f"{mount_point} is not a mount point — rclone is not mounted"
+        )
+
+    result = subprocess.run(["mkdir", "-p", test_dir],
+                            capture_output=True, text=True, timeout=timeout)
+    if result.returncode != 0:
+        raise RuntimeError(f"mkdir failed: {result.stderr.strip()}")
+
+    result = subprocess.run(["bash", "-c", f'echo "{token}" > "{test_file}"'],
+                            capture_output=True, text=True, timeout=timeout)
+    if result.returncode != 0:
+        raise RuntimeError(f"Write failed: {result.stderr.strip()}")
+
+    result = subprocess.run(["cat", test_file],
+                            capture_output=True, text=True, timeout=timeout)
+    if result.returncode != 0:
+        raise RuntimeError(f"Read failed: {result.stderr.strip()}")
+
+    content = result.stdout.strip()
+    if content != token:
+        raise RuntimeError(f"Read mismatch: wrote '{token}', got '{content}'")
+
+    subprocess.run(["rm", "-f", test_file], timeout=10, capture_output=True)
+
+
+# ---------------------------------------------------------------------------
+# Alerts
+#
+# server_monitor.py posted to Discord through a 400-line discord_bot.py and
+# checkDisk.py posted to Mailjet inline. Both read their credentials from the
+# environment (in practice /web/zin/.env); so does this. Like the heartbeat,
+# sending an alert never raises: a monitor must not die of its own alert.
+# ---------------------------------------------------------------------------
+
+DISCORD_API_BASE = "https://discord.com/api/v10"
+MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
+
+#: level -> (embed colour, title icon). What discord_bot.send_notification sent.
+ALERT_LEVELS = {
+    "info": (0x3498DB, "ℹ️"),
+    "success": (0x2ECC71, "✅"),
+    "warning": (0xF1C40F, "⚠️"),
+    "error": (0xE74C3C, "❌"),
+}
+
+
+def _post_alert(url: str, ok_status: int, logger: logging.Logger, what: str,
+                timeout: float, **kwargs) -> bool:
+    try:
+        response = requests.post(url, timeout=timeout, **kwargs)
+    except Exception as exc:
+        logger.error(f"Failed to send {what}: {exc}")
+        return False
+    if response.status_code == ok_status:
+        return True
+    logger.error(f"{what} error {response.status_code}: {response.text}")
+    return False
+
+
+def _send_discord(title, message, level, footer, env, logger, timeout) -> Optional[bool]:
+    webhook_url = env.get("DISCORD_WEBHOOK_URL", "")
+    bot_token = env.get("DISCORD_BOT_TOKEN", "")
+    channel_id = env.get("DISCORD_CHANNEL_ID", "")
+    if not webhook_url and not (bot_token and channel_id):
+        return None
+    color, icon = ALERT_LEVELS.get(level, (ALERT_LEVELS["info"][0], ""))
+    embed: Dict[str, Any] = {"title": f"{icon} {title}", "color": color}
+    if message:
+        embed["description"] = message
+    if footer:
+        embed["footer"] = {"text": footer}
+    payload = {"embeds": [embed]}
+    if webhook_url:
+        return _post_alert(webhook_url, 204, logger, "Discord webhook", timeout,
+                           json=payload)
+    return _post_alert(
+        f"{DISCORD_API_BASE}/channels/{channel_id}/messages", 200, logger,
+        "Discord bot API", timeout, json=payload,
+        headers={"Authorization": f"Bot {bot_token}",
+                 "Content-Type": "application/json"})
+
+
+def _send_mailjet(title, message, env, logger, timeout, email_from, email_to,
+                  from_name, to_name) -> Optional[bool]:
+    api_key = env.get("MAILJET_API_KEY", "")
+    secret_key = env.get("MAILJET_SECRET_KEY", "")
+    email_from = email_from or env.get("ALERT_EMAIL_FROM", "")
+    email_to = email_to or env.get("ALERT_EMAIL_TO", "")
+    if not (api_key and secret_key and email_from and email_to):
+        return None
+    payload = {"Messages": [{
+        "From": {"Email": email_from, "Name": from_name},
+        "To": [{"Email": email_to, "Name": to_name}],
+        "Subject": title,
+        "TextPart": message,
+    }]}
+    return _post_alert(MAILJET_SEND_URL, 200, logger, "Mailjet", timeout,
+                       json=payload, auth=(api_key, secret_key),
+                       headers={"Content-Type": "application/json"})
+
+
+def send_alert(
+    title: str,
+    message: str,
+    level: str = "error",
+    *,
+    channels: Iterable[str] = ("discord", "mailjet"),
+    footer: Optional[str] = None,
+    email_from: Optional[str] = None,
+    email_to: Optional[str] = None,
+    from_name: str = "SignCollect Monitor",
+    to_name: str = "Admin",
+    env: Optional[Mapping[str, str]] = None,
+    logger: Optional[logging.Logger] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> bool:
+    """Send an alert to every configured channel in `channels`.
+
+    Returns True if at least one channel accepted it. Never raises.
+
+    - "discord": `DISCORD_WEBHOOK_URL`, or `DISCORD_BOT_TOKEN` + `DISCORD_CHANNEL_ID`.
+      An embed titled "<icon> title", coloured by `level`
+      (info, success, warning, error), with `message` and `footer`.
+    - "mailjet": `MAILJET_API_KEY` + `MAILJET_SECRET_KEY`; `title` is the
+      subject, `message` the text. Addresses from the arguments, else
+      `ALERT_EMAIL_FROM` / `ALERT_EMAIL_TO`.
+
+    Credentials come from `env` (default: `os.environ`), never from code.
+    A channel without them is skipped with a warning.
+    """
+    env = os.environ if env is None else env
+    logger = logger or _LOG
+    _ensure_visible(logger)
+    sent = False
+    for channel in channels:
+        if channel == "discord":
+            ok = _send_discord(title, message, level, footer, env, logger, timeout)
+            missing = "DISCORD_WEBHOOK_URL or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID"
+        elif channel == "mailjet":
+            ok = _send_mailjet(title, message, env, logger, timeout, email_from,
+                               email_to, from_name, to_name)
+            missing = ("MAILJET_API_KEY + MAILJET_SECRET_KEY "
+                       "(and ALERT_EMAIL_FROM/ALERT_EMAIL_TO)")
+        else:
+            logger.error(f"Unknown alert channel {channel!r}")
+            continue
+        if ok is None:
+            logger.warning(f"{channel} alert not sent: set {missing}")
+        sent = sent or bool(ok)
+    return sent

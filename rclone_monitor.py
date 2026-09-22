@@ -23,10 +23,10 @@ from datetime import datetime
 # fallback finds it *beside this script* rather than at a path hardcoded to
 # one particular server's home directory.
 try:
-    from signlab_client_monitor import ClientMonitor
+    from signlab_client_monitor import ClientMonitor, mount_responds
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from python_client import ClientMonitor
+    from python_client import ClientMonitor, mount_responds
 
 # Initialize Client Monitor
 monitor = ClientMonitor(
@@ -109,38 +109,8 @@ def extract_mount_path(command):
     return "unknown"
 
 
-def test_mount_accessible(mount_path):
-    """
-    Test if the mount point is actually accessible.
-
-    Args:
-        mount_path (str): Path to the mount point
-
-    Returns:
-        tuple: (is_accessible, error_message)
-    """
-    try:
-        # Try to list the directory with a timeout
-        result = subprocess.run(
-            ['timeout', '5', 'ls', mount_path],
-            capture_output=True,
-            text=True,
-            timeout=6
-        )
-
-        if result.returncode == 0:
-            return (True, None)
-        elif "Transport endpoint is not connected" in result.stderr:
-            return (False, "Mount disconnected (FUSE endpoint not connected)")
-        elif result.returncode == 124:  # timeout exit code
-            return (False, "Mount not responding (timeout)")
-        else:
-            return (False, f"Mount error: {result.stderr.strip()}")
-
-    except subprocess.TimeoutExpired:
-        return (False, "Mount not responding (timeout)")
-    except Exception as e:
-        return (False, f"Mount test failed: {str(e)}")
+# `ls` the mount with a 5 s timeout: (is_accessible, error message or None).
+test_mount_accessible = mount_responds
 
 
 def main():

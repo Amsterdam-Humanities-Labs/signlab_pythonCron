@@ -1,0 +1,20 @@
+[Unit]
+Description=Monitors the rclone mount health
+After=network.target
+
+[Service]
+Type=simple
+User=gomer
+WorkingDirectory=/home/gomer/pythonCron
+ExecStart=/usr/bin/python3 /home/gomer/pythonCron/service_wrapper.py Rclone_Mount_Monitor
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits (optional, uncomment and adjust as needed)
+# CPUQuota=50%
+# MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

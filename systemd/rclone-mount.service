@@ -1,0 +1,31 @@
+[Unit]
+Description=Rclone Mount - signcollect studioFiles
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=gomer
+Group=gomer
+Environment=GOGC=50
+ExecStart=/usr/local/bin/rclone mount "signcollect:/AIHR-FGW-TEST-SIGNLAB (Projectfolder)/studioFiles" /web/gebarenoverleg_media/studioFiles \
+  --allow-other \
+  --allow-non-empty \
+  --vfs-cache-mode writes \
+  --vfs-cache-max-size 1G \
+  --vfs-cache-max-age 1h \
+  --vfs-write-back 5s \
+  --buffer-size 0 \
+  --vfs-read-chunk-size 8M \
+  --vfs-read-ahead 0 \
+  --dir-cache-time 5m \
+  --attr-timeout 1s \
+  --transfers 1 \
+  --rc --rc-addr 127.0.0.1:5572 \
+  --log-level NOTICE
+ExecStop=/bin/fusermount -uz /web/gebarenoverleg_media/studioFiles
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

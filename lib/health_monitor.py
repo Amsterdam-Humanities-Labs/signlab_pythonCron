@@ -8,6 +8,7 @@ import time
 import os
 import signal
 import logging
+import logging.handlers
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Optional, Dict, Any
 import psutil
@@ -16,6 +17,31 @@ if TYPE_CHECKING:
     from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
+
+
+# 5 MB x 5, the same policy as setup_rotating_logger in the heartbeat client.
+WATCHDOG_LOG_MAX_BYTES = 5 * 1024 * 1024
+WATCHDOG_LOG_BACKUP_COUNT = 5
+
+
+def watchdog_logger(path: str) -> logging.Logger:
+    """The size-rotated writer for watchdog.log.
+
+    The scheduler and the health monitor both append to this file; sharing one
+    logger (and so one handler) per path keeps rotation safe between them.
+    Lines keep the old `[YYYY-mm-dd HH:MM:SS] message` format.
+    """
+    wlog = logging.getLogger('pythoncron.watchdog.' + os.path.abspath(path))
+    if not wlog.handlers:
+        handler = logging.handlers.RotatingFileHandler(
+            path, maxBytes=WATCHDOG_LOG_MAX_BYTES,
+            backupCount=WATCHDOG_LOG_BACKUP_COUNT)
+        handler.setFormatter(logging.Formatter(
+            '[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+        wlog.addHandler(handler)
+        wlog.setLevel(logging.INFO)
+        wlog.propagate = False
+    return wlog
 
 
 class HealthMonitor(threading.Thread):
@@ -234,9 +260,7 @@ class HealthMonitor(threading.Thread):
     def _log_watchdog(self, message: str):
         """Write to the watchdog log file."""
         try:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            with open(self.watchdog_log_path, 'a') as f:
-                f.write(f"[{timestamp}] {message}\n")
+            watchdog_logger(self.watchdog_log_path).info(message)
         except Exception as e:
             logger.error(f"Failed to write to watchdog log: {e}")
 

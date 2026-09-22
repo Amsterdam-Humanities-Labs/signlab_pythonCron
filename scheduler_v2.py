@@ -16,13 +16,14 @@ import signal
 import sys
 import time
 import logging
+import logging.handlers
 import argparse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 from lib.state_manager import StateManager
 from lib.circuit_breaker import CircuitBreaker
-from lib.health_monitor import HealthMonitor
+from lib.health_monitor import HealthMonitor, watchdog_logger
 from lib.service_executor import ServiceExecutor
 from lib.config_validator import ConfigValidator
 
@@ -51,7 +52,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(STATE_DIR, 'scheduler_v2.log'))
+        # 5 MB x 5, the same policy as setup_rotating_logger in the heartbeat
+        # client. python-scheduler.service sends stdout to the journal, so
+        # this handler is the only writer of the file.
+        logging.handlers.RotatingFileHandler(
+            os.path.join(STATE_DIR, 'scheduler_v2.log'),
+            maxBytes=5 * 1024 * 1024, backupCount=5)
     ]
 )
 logger = logging.getLogger('scheduler_v2')
@@ -130,9 +136,7 @@ class Scheduler:
     def _log_watchdog(self, message: str):
         """Write to watchdog log."""
         try:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            with open(self.watchdog_log, 'a') as f:
-                f.write(f"[{timestamp}] {message}\n")
+            watchdog_logger(self.watchdog_log).info(message)
         except Exception as e:
             logger.error(f"Failed to write to watchdog log: {e}")
 

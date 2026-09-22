@@ -32,9 +32,11 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
 
-# Logging
-StandardOutput=append:/home/gomer/pythonCron/scheduler_v2.log
-StandardError=append:/home/gomer/pythonCron/scheduler_v2.log
+# Logging. The journal, not append: - scheduler_v2.py already writes
+# scheduler_v2.log itself (rotated, 5 MB x 5); an append: here wrote every
+# line twice and kept a file descriptor that rotation cannot move.
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

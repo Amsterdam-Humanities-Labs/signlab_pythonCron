@@ -24,8 +24,10 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
 
-StandardOutput=append:/home/gomer/pythonCron/server_monitor.log
-StandardError=append:/home/gomer/pythonCron/server_monitor.log
+# The journal (journalctl -u server-monitor), which rotates itself. This used
+# to append: to server_monitor.log, which nothing reads and nothing rotated.
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

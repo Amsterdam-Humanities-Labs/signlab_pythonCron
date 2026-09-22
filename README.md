@@ -34,6 +34,7 @@ python3 -m pytest tests/ -v
 - `config.json`: flat JSON array of jobs. Keys: `service_name` (unique), `executable`, `path` (missing = job skipped), `working_dir`, `interval_minutes`, `time_or_minute` (`minute`|`time`), `scheduled_time` (`HH:MM`), `timeout_minutes`, `execute_immediately`.
 - `services_config.json`: `{global, services: [...]}`; each job has `execution`, `command`, `health`, `retry`, `logging`.
 - All job paths are absolute and host-specific (`/web`, `/web/zin`, `/home/gomer/viconSync`).
+- `checkDisk.py`, `server_monitor.py`, `sync_mocap_files.py` resolve the docroot with vendored `sc_paths.py` (`SC_WEB_ROOT` env or in `$SC_ENV_FILE`/`/web/.env`, default `/web`). Edit it in signlab_signcollect-lib, not here.
 - `PYTHONCRON_HOME` (config lookup) and `PYTHONCRON_STATE_DIR` (logs, `scheduler_state.db`) move the v2 scheduler. Wrappers and watchdog still hardcode `/home/gomer/pythonCron`.
 - Keep `scheduler_state.db`: without it every job counts as due at once.
 - Secrets come from `/web/zin/.env` (not in git): `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`, `DISCORD_WEBHOOK_URL`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`.

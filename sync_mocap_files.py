@@ -12,6 +12,8 @@ import sys
 import re
 from datetime import datetime
 
+from sc_paths import sc_path
+
 # The heartbeat client. Prefer the installed package; fall back to the copy
 # vendored in this directory, which is what a host that has never run
 # client/install.sh from signlab_client_monitor_api will find. Note the
@@ -40,13 +42,13 @@ RCLONE_TRANSFERS = 4
 
 # (source, dest_subfolder, includes, delete_after_sync)
 SYNC_MAP = [
-    ("/web/gebarenoverleg_media/fbx",         "unreal",       ["*.fbx", "*.glb"], False),
-    ("/web/gebarenoverleg_media/fbx/CC",      "unreal/CC",    ["*.fbx", "*.glb"], False),
-    ("/web/gebarenoverleg_media/fbx/Vicon",   "unreal/Vicon", ["*.fbx", "*.glb"], False),
-    ("/web/gebarenoverleg_media/llcsv",        "livelink",     ["*.csv"],          False),
-    ("/web/gebarenoverleg_media/metadata",     "metadata",     ["*.json"],         False),
-    ("/web/gebarenoverleg_media/shogun_live",  "shogun_live",  ["*.mov", "*.mcp", "*.enf", "*.x2d"], True),
-    ("/web/gebarenoverleg_media/razerFiles",   "obs",          ["*.mkv"],          False),
+    (sc_path("media_fbx"),                   "unreal",       ["*.fbx", "*.glb"], False),
+    (sc_path("media_fbx", "CC"),             "unreal/CC",    ["*.fbx", "*.glb"], False),
+    (sc_path("media_fbx", "Vicon"),          "unreal/Vicon", ["*.fbx", "*.glb"], False),
+    (sc_path("media", "llcsv"),              "livelink",     ["*.csv"],          False),
+    (sc_path("media", "metadata"),           "metadata",     ["*.json"],         False),
+    (sc_path("media", "shogun_live"),        "shogun_live",  ["*.mov", "*.mcp", "*.enf", "*.x2d"], True),
+    (sc_path("media", "razerFiles"),         "obs",          ["*.mkv"],          False),
 ]
 
 

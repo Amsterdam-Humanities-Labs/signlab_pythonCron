@@ -20,11 +20,12 @@ from pathlib import Path
 
 sys.path.insert(0, '/home/gomer/pythonCron')
 from discord_bot import DiscordBot
+from sc_paths import sc_path
 
 # ---------------------------------------------------------------------------
-# Load .env from /web/zin/.env
+# Load .env from <root>/zin/.env, normally /web/zin/.env
 # ---------------------------------------------------------------------------
-ENV_FILE = "/web/zin/.env"
+ENV_FILE = sc_path("zin", ".env")
 if Path(ENV_FILE).exists():
     with open(ENV_FILE) as f:
         for line in f:
@@ -40,7 +41,7 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID", "")
 
-MOUNT_TEST_DIR = "/web/gebarenoverleg_media/studioFiles/sc_test"
+MOUNT_TEST_DIR = sc_path("media", "studioFiles", "sc_test")
 DISK_THRESHOLD_PERCENT = 10  # alert when free space below this
 SQL_TIMEOUT_SECONDS = 30
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
@@ -149,7 +150,7 @@ def check_disk_usage() -> bool:
 # Check 2: Rclone mount (write + read test)
 # ---------------------------------------------------------------------------
 
-MOUNT_POINT = "/web/gebarenoverleg_media/studioFiles"
+MOUNT_POINT = sc_path("media", "studioFiles")
 
 
 def check_rclone_mount() -> bool:

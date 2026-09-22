@@ -102,8 +102,21 @@ def get_bot():
     return _bot
 
 
+ALERT_COOLDOWN_SECONDS = 3600  # re-notify a still-failing check at most hourly
+
+_last_sent = {}  # alert title -> unix timestamp of last send
+
+
 def send_alert(title: str, message: str, level: str = "error"):
-    """Send a Discord notification."""
+    """Send a Discord notification, suppressing repeats within the cooldown."""
+    now = time.time()
+    last = _last_sent.get(title)
+    if last is not None and now - last < ALERT_COOLDOWN_SECONDS:
+        remaining = int(ALERT_COOLDOWN_SECONDS - (now - last))
+        logger.info(f"Alert suppressed ({remaining}s of cooldown left): {title}")
+        return
+    _last_sent[title] = now
+
     bot = get_bot()
     if bot is None:
         logger.warning(f"ALERT (no Discord): [{level}] {title} - {message}")
@@ -112,6 +125,23 @@ def send_alert(title: str, message: str, level: str = "error"):
         title=title,
         message=f"**Host:** {HOSTNAME}\n{message}",
         level=level,
+        footer=f"Server Monitor | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+    )
+
+
+def clear_alert(title: str, healthy: bool):
+    """Reset a check's cooldown and announce recovery once it passes again."""
+    if not healthy or title not in _last_sent:
+        return
+    del _last_sent[title]
+    bot = get_bot()
+    if bot is None:
+        logger.info(f"RECOVERED (no Discord): {title}")
+        return
+    bot.send_notification(
+        title=f"Recovered: {title}",
+        message=f"**Host:** {HOSTNAME}\nCheck is passing again.",
+        level="info",
         footer=f"Server Monitor | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
     )
 
@@ -303,6 +333,13 @@ def run_checks():
     disk_ok = check_disk_usage()
     mount_ok = check_rclone_mount()
     mysql_ok = check_mysql()
+
+    clear_alert("Disk Space Low", disk_ok)
+    clear_alert("Disk Check Failed", disk_ok)
+    clear_alert("Rclone Mount Timeout", mount_ok)
+    clear_alert("Rclone Mount Error", mount_ok)
+    clear_alert("MySQL Connection Failed", mysql_ok)
+    clear_alert("MySQL Timeout", mysql_ok)
 
     if disk_ok and mount_ok and mysql_ok:
         logger.info("All checks passed")

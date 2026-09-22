@@ -6,6 +6,7 @@ import json
 import os
 import requests
 import sys
+from sc_paths import sc_path
 # The heartbeat client. Prefer the installed package; fall back to the copy
 # vendored in this directory, which is what a host that has never run
 # client/install.sh from signlab_client_monitor_api will find. Note the
@@ -17,8 +18,8 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from python_client import ClientMonitor
 
-# Load credentials from /web/zin/.env (see README.md)
-ENV_FILE = "/web/zin/.env"
+# Load credentials from <root>/zin/.env, normally /web/zin/.env (see README.md)
+ENV_FILE = sc_path("zin", ".env")
 if os.path.exists(ENV_FILE):
     with open(ENV_FILE) as f:
         for line in f:
@@ -64,7 +65,7 @@ try:
         "free_percent": free_percent
     }
     # Write data to diskCheck.json
-    with open("/web/diskCheck.json", "w") as json_file:
+    with open(sc_path("diskCheck.json"), "w") as json_file:
         json.dump(data, json_file)
 
     alert_sent = False

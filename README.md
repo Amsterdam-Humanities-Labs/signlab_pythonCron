@@ -28,7 +28,7 @@ python3 -m pytest tests/ -v
 - Demo hosts: `interface_deploy/scripts/pythoncron.sh` in the [stack repo](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack). It installs one job (Signbank ECV refresh, `config/pythoncron.demo.json`) and symlinks `/opt/pythonCron/config.json` to `/etc/opt/...`, so production's list can never run there.
 - Never add this repo to `repos.tsv`: that would put it in the docroot and publish its source over HTTP.
 - Production: units installed by hand (`python-scheduler.service`, `server-monitor.service`, `watchdog-daemon.service`, `bash setup_systemd_services.sh` for the 16 wrappers).
-- Ops: `systemctl list-units 'service-*'`, `journalctl -u python-scheduler.service -f`, `logs/<name>.log`, `state/<name>.json`. Never `rm` a live log; truncate it with `: > logs/<name>.log`.
+- Ops: `systemctl list-units 'service-*'`, `journalctl -u python-scheduler.service -f` (also `-u server-monitor`), `scheduler_v2.log` + `watchdog.log` (rotated 5 MB x 5), `logs/<name>.log`, `state/<name>.json`. Never `rm` a live log; truncate it with `: > logs/<name>.log`.
 
 ## Configuration
 - `config.json`: flat JSON array of jobs. Keys: `service_name` (unique), `executable`, `path` (missing = job skipped), `working_dir`, `interval_minutes`, `time_or_minute` (`minute`|`time`), `scheduled_time` (`HH:MM`), `timeout_minutes`, `execute_immediately`.

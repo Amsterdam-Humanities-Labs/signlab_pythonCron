@@ -527,52 +527,6 @@
       }
     },
 
-    {
-      "name": "Update_field_glosses_at_sentences",
-      "enabled": true,
-      "description": "Updates gloss fields in sentence database",
-
-      "execution": {
-        "type": "interval",
-        "interval_seconds": 86400,
-        "time": null,
-        "jitter_seconds": 600
-      },
-
-      "command": {
-        "executable": "/usr/bin/python3",
-        "script": "/web/zin/eaf/zin/glosTosql.py",
-        "working_dir": "/web/tempScripts",
-        "environment": {},
-        "timeout_seconds": 1800
-      },
-
-      "health": {
-        "max_consecutive_failures": 2,
-        "restart_delay_seconds": 1800,
-        "alert_after_failures": 3
-      },
-
-      "retry": {
-        "enabled": true,
-        "max_retries": 2,
-        "retry_delay_seconds": 300,
-        "exponential_backoff": true
-      },
-
-      "logging": {
-        "level": "INFO",
-        "max_size_mb": 50,
-        "max_files": 3
-      },
-
-      "watchdog": {
-        "enabled": true,
-        "check_if_hung": true,
-        "hung_threshold_seconds": 3600,
-        "auto_restart": true
-      }
-    },
 
     {
       "name": "Update_field_gvg_at_sentences",

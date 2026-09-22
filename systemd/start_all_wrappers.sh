@@ -46,8 +46,6 @@ echo "Starting convert_zinString_to_LemmaList..."
 nohup python3 /home/gomer/pythonCron/service_wrapper.py convert_zinString_to_LemmaList > /dev/null 2>&1 &
 sleep 1
 
-echo "Starting Update_field_glosses_at_sentences..."
-nohup python3 /home/gomer/pythonCron/service_wrapper.py Update_field_glosses_at_sentences > /dev/null 2>&1 &
 sleep 1
 
 echo "Starting Update_field_gvg_at_sentences..."

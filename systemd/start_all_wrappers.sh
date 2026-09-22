@@ -64,5 +64,21 @@ echo "Starting Convert_Livelink_videos..."
 nohup python3 /home/gomer/pythonCron/service_wrapper.py Convert_Livelink_videos > /dev/null 2>&1 &
 sleep 1
 
+echo "Starting Sync_Vicon_Files_rsync..."
+nohup python3 /home/gomer/pythonCron/service_wrapper.py Sync_Vicon_Files_rsync > /dev/null 2>&1 &
+sleep 1
+
+echo "Starting Sync_Mocap_Files..."
+nohup python3 /home/gomer/pythonCron/service_wrapper.py Sync_Mocap_Files > /dev/null 2>&1 &
+sleep 1
+
+echo "Starting Rclone_Mount_Monitor..."
+nohup python3 /home/gomer/pythonCron/service_wrapper.py Rclone_Mount_Monitor > /dev/null 2>&1 &
+sleep 1
+
+echo "Starting Sync_EAF_to_Database..."
+nohup python3 /home/gomer/pythonCron/service_wrapper.py Sync_EAF_to_Database > /dev/null 2>&1 &
+sleep 1
+
 echo "All services started."
 echo "Check status with: ps aux | grep service_wrapper.py"

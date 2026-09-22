@@ -30,6 +30,10 @@ sudo systemctl enable \
     service-move_studiofiles.service \
     service-mysql_backup.service \
     service-qrconvert.service \
+    service-rclone_mount_monitor.service \
+    service-sync_eaf_to_database.service \
+    service-sync_mocap_files.service \
+    service-sync_vicon_files_rsync.service \
     service-update_field_gvg_at_sentences.service
 
 echo
@@ -53,6 +57,10 @@ sudo systemctl start \
     service-move_studiofiles.service \
     service-mysql_backup.service \
     service-qrconvert.service \
+    service-rclone_mount_monitor.service \
+    service-sync_eaf_to_database.service \
+    service-sync_mocap_files.service \
+    service-sync_vicon_files_rsync.service \
     service-update_field_gvg_at_sentences.service
 
 echo

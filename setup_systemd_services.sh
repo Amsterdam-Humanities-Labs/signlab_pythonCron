@@ -30,7 +30,6 @@ sudo systemctl enable \
     service-move_studiofiles.service \
     service-mysql_backup.service \
     service-qrconvert.service \
-    service-update_field_glosses_at_sentences.service \
     service-update_field_gvg_at_sentences.service
 
 echo
@@ -54,7 +53,6 @@ sudo systemctl start \
     service-move_studiofiles.service \
     service-mysql_backup.service \
     service-qrconvert.service \
-    service-update_field_glosses_at_sentences.service \
     service-update_field_gvg_at_sentences.service
 
 echo

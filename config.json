@@ -22,20 +22,20 @@
     {
         "service_name": "Converter",
         "executable": "/usr/bin/python3",
-        "path": "/web/helpScripts/convert.py",
+        "path": "/home/gomer/pythonCron/video_converter.py",
         "interval_minutes": 720,
         "execute_immediately": true,
-        "working_dir": "/web/helpScripts",
+        "working_dir": "/home/gomer/pythonCron",
         "time_or_minute": "minute",
         "timeout_minutes": 90
     },
     {
         "service_name": "MySQL Backup",
         "executable": "/usr/bin/php",
-        "path": "/web/helpScripts/mysqlBackup.php",
+        "path": "/home/gomer/pythonCron/mysql_backup.php",
         "interval_minutes": 60,
         "execute_immediately": true,
-        "working_dir": "/web/helpScripts",
+        "working_dir": "/home/gomer/pythonCron",
         "time_or_minute": "minute",
         "timeout_minutes": 60
     },
@@ -45,26 +45,26 @@
         "path": "/home/gomer/pythonCron/checkDisk.py",
         "interval_minutes": 60,
         "execute_immediately": true,
-        "working_dir": "/web/pythonCron",
+        "working_dir": "/home/gomer/pythonCron",
         "time_or_minute": "minute"
     },
     {
         "service_name": "Backup Zin EAF/SRT files",
         "executable": "/usr/bin/python3",
-        "path": "/web/helpScripts/zinBackup.py",
+        "path": "/home/gomer/pythonCron/zin_backup.py",
         "interval_minutes": 1440,
         "execute_immediately": true,
-        "working_dir": "/web/pythonCron",
+        "working_dir": "/home/gomer/pythonCron",
         "time_or_minute": "minute",
         "timeout_minutes": 90
     },
     {
         "service_name": "Move StudioFiles",
         "executable": "/usr/bin/python3",
-        "path": "/web/helpScripts/check_studiofiles.py",
+        "path": "/home/gomer/pythonCron/move_studiofiles.py",
         "interval_minutes": 360,
         "execute_immediately": true,
-        "working_dir": "/web/helpScripts",
+        "working_dir": "/home/gomer/pythonCron",
         "time_or_minute": "minute",
         "timeout_minutes": 90
     },

@@ -39,6 +39,7 @@ class ServiceWrapper:
         self.consecutive_failures = 0
         self.last_execution = None
         self.last_success = None
+        self._first_run_target = None
 
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -132,12 +133,19 @@ class ServiceWrapper:
 
         self.state_file = os.path.join(state_dir, f"{self.service_name}.json")
 
-        # Initialize state
+        # Fields describing the *current* process are always refreshed.
         self._update_state({
             'service': self.service_name,
             'status': 'starting',
             'pid': os.getpid(),
             'started_at': datetime.now().isoformat(),
+        })
+
+        # Schedule position and cumulative counters are seeded only when absent.
+        # Overwriting them on every start wiped the running totals and made the
+        # service forget where it was in its interval, so a restart re-ran it
+        # immediately instead of waiting out the remainder.
+        defaults = {
             'last_execution': None,
             'last_success': None,
             'last_failure': None,
@@ -145,7 +153,11 @@ class ServiceWrapper:
             'total_executions': 0,
             'total_successes': 0,
             'total_failures': 0
-        })
+        }
+        missing = {k: v for k, v in defaults.items()
+                   if self._get_state_value(k, '__absent__') == '__absent__'}
+        if missing:
+            self._update_state(missing)
 
     def _update_state(self, updates):
         """Update state file with new information"""
@@ -184,8 +196,13 @@ class ServiceWrapper:
             if self.last_execution:
                 next_time = self.last_execution + timedelta(seconds=interval_seconds + jitter)
             else:
-                # First run - execute immediately with small jitter
-                next_time = now + timedelta(seconds=jitter)
+                # First run - execute after a small one-off jitter. The target is
+                # cached because run() recalculates this every loop iteration; a
+                # freshly drawn jitter each time would keep pushing the deadline
+                # into the future and the service would never execute.
+                if self._first_run_target is None:
+                    self._first_run_target = now + timedelta(seconds=jitter)
+                next_time = self._first_run_target
 
             return next_time
 
@@ -450,6 +467,16 @@ class ServiceWrapper:
 
         self.setup_logging()
         self.setup_state_file()
+
+        # Restore schedule position so a restart does not re-run the service
+        # immediately or lose its place in the interval.
+        prior = self._get_state_value('last_execution')
+        if prior:
+            try:
+                self.last_execution = datetime.fromisoformat(prior)
+                self.logger.info(f"Restored last_execution from state: {prior}")
+            except (ValueError, TypeError):
+                self.logger.warning(f"Could not parse last_execution from state: {prior!r}")
 
         self.logger.info(f"Starting service wrapper for '{self.service_name}'")
         self.logger.info(f"Configuration: {json.dumps(self.config, indent=2)}")

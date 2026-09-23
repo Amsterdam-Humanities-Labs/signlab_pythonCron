@@ -20,18 +20,43 @@ import time
 import signal
 import subprocess
 import psutil
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 import traceback
 import argparse
 
-# Shared log setup and checks: the installed package, else the copy vendored
-# beside this script (see README.md).
+# Log setup: the installed package, else the copy vendored beside this script
+# (see README.md), else the stdlib. Both names need client 1.1.0+.
 try:
     from signlab_client_monitor import disk_usage, setup_rotating_logger
 except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from python_client import disk_usage, setup_rotating_logger
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from python_client import disk_usage, setup_rotating_logger
+    except ImportError:
+        # Last resort, stdlib only: a missing file or dependency must never
+        # stop this process from starting. Same files and rotation.
+        import logging.handlers
+
+        def setup_rotating_logger(path, name=None, level=logging.INFO,
+                                  max_bytes=5 * 1024 * 1024, backup_count=5,
+                                  to_stream=True, stream=None,
+                                  fmt="[%(asctime)s] [%(levelname)s] %(message)s",
+                                  datefmt=None):
+            logger = logging.getLogger(name)
+            logger.setLevel(level)
+            handlers = [logging.handlers.RotatingFileHandler(
+                path, maxBytes=max_bytes, backupCount=backup_count)]
+            if to_stream:
+                handlers.append(logging.StreamHandler(stream))
+            for handler in handlers:
+                handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+                logger.addHandler(handler)
+            return logger
+
+        def disk_usage(path="/"):
+            return {"used_percent": psutil.disk_usage(path).percent}
 
 class WatchdogDaemon:
     def __init__(self, config_path='/home/gomer/pythonCron/services_config.json',

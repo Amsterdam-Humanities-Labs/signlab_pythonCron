@@ -28,13 +28,34 @@ from typing import Callable, Dict, Iterable, List, Tuple
 
 from sc_paths import sc_path
 
-# Shared log setup: the installed package, else the copy vendored
-# beside this script (see README.md).
+# Log setup: the installed package, else the copy vendored beside this script
+# (see README.md), else the stdlib.
 try:
     from signlab_client_monitor import setup_rotating_logger
 except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from python_client import setup_rotating_logger
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from python_client import setup_rotating_logger
+    except ImportError:
+        # Last resort, stdlib only: a missing file or dependency must never
+        # stop this process from starting. Same files and rotation.
+        import logging.handlers
+
+        def setup_rotating_logger(path, name=None, level=logging.INFO,
+                                  max_bytes=5 * 1024 * 1024, backup_count=5,
+                                  to_stream=True, stream=None,
+                                  fmt="[%(asctime)s] [%(levelname)s] %(message)s",
+                                  datefmt=None):
+            logger = logging.getLogger(name)
+            logger.setLevel(level)
+            handlers = [logging.handlers.RotatingFileHandler(
+                path, maxBytes=max_bytes, backupCount=backup_count)]
+            if to_stream:
+                handlers.append(logging.StreamHandler(stream))
+            for handler in handlers:
+                handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+                logger.addHandler(handler)
+            return logger
 
 # Runtime data goes beside the script (production: /home/gomer/pythonCron),
 # or under $PYTHONCRON_STATE_DIR, as scheduler_v2.py does.

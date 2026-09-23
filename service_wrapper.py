@@ -22,9 +22,38 @@ import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
-from logging.handlers import RotatingFileHandler
 import traceback
 import random
+
+# Log setup: the installed package, else the copy vendored beside this script
+# (see README.md), else the stdlib. disk_usage is only imported
+# to require client 1.1.0+, whose setup_rotating_logger takes datefmt.
+try:
+    from signlab_client_monitor import disk_usage, setup_rotating_logger
+except ImportError:
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from python_client import disk_usage, setup_rotating_logger
+    except ImportError:
+        # Last resort, stdlib only: a missing file or dependency must never
+        # stop this process from starting. Same files and rotation.
+        import logging.handlers
+
+        def setup_rotating_logger(path, name=None, level=logging.INFO,
+                                  max_bytes=5 * 1024 * 1024, backup_count=5,
+                                  to_stream=True, stream=None,
+                                  fmt="[%(asctime)s] [%(levelname)s] %(message)s",
+                                  datefmt=None):
+            logger = logging.getLogger(name)
+            logger.setLevel(level)
+            handlers = [logging.handlers.RotatingFileHandler(
+                path, maxBytes=max_bytes, backupCount=backup_count)]
+            if to_stream:
+                handlers.append(logging.StreamHandler(stream))
+            for handler in handlers:
+                handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+                logger.addHandler(handler)
+            return logger
 
 class ServiceWrapper:
     def __init__(self, service_name, config_path='/home/gomer/pythonCron/services_config.json'):
@@ -98,31 +127,12 @@ class ServiceWrapper:
         backup_count = log_config.get('max_files', 3)
         log_level = getattr(logging, log_config.get('level', 'INFO'))
 
-        # Create logger
-        self.logger = logging.getLogger(self.service_name)
-        self.logger.setLevel(log_level)
-
-        # Create rotating file handler
-        handler = RotatingFileHandler(
-            log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count
-        )
-
-        # Create formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        handler.setFormatter(formatter)
-
-        # Add handler to logger
-        self.logger.addHandler(handler)
-
-        # Also log to console
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        # Rotating file per service, and stdout
+        self.logger = setup_rotating_logger(
+            log_file, name=self.service_name, level=log_level,
+            max_bytes=max_bytes, backup_count=backup_count, stream=sys.stdout,
+            fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S')
 
         self.logger.info(f"Service wrapper initialized for '{self.service_name}'")
 

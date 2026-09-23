@@ -1,10 +1,8 @@
 #with this script we can check the disk space of the system
 #when the disk space is less than 20% write to diskCheck.json file
 
-import subprocess
 import json
 import os
-import requests
 import sys
 from sc_paths import sc_path
 # The heartbeat client. Prefer the installed package; fall back to the copy
@@ -13,10 +11,10 @@ from sc_paths import sc_path
 # fallback finds it *beside this script* rather than at a path hardcoded to
 # one particular server's home directory.
 try:
-    from signlab_client_monitor import ClientMonitor
+    from signlab_client_monitor import ClientMonitor, disk_usage, send_alert
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from python_client import ClientMonitor
+    from python_client import ClientMonitor, disk_usage, send_alert
 
 # Load credentials from <root>/zin/.env, normally /web/zin/.env (see README.md)
 ENV_FILE = sc_path("zin", ".env")
@@ -37,26 +35,12 @@ monitor = ClientMonitor(
     heartbeat_interval=3600  # 60 minutes
 )
 
-# Function to get disk usage statistics using 'df -B1' with robust parsing
-def get_disk_usage(path):
-    try:
-        df_output = subprocess.check_output(["df", "-B1", path, "--output=size,used,avail"]).decode("utf-8").split("\n")[1].split()
-        if len(df_output) < 3:
-            raise ValueError("Unexpected df output format")
-        total = int(df_output[0])
-        used = int(df_output[1])
-        free = int(df_output[2])
-        return total, used, free
-    except (subprocess.CalledProcessError, IndexError, ValueError) as e:
-        print(f"Error retrieving disk usage for {path}: {e}")
-        return 0, 0, 0
-
 try:
     # Get disk usage statistics for '/web'
-    web_total, web_used, web_free = get_disk_usage("/")
+    disk = disk_usage("/")
+    web_total, web_used, web_free = disk["total"], disk["used"], disk["free"]
     print(web_total, web_used, web_free)
-    # Calculate percentage of free disk space
-    free_percent = web_free / web_total * 100
+    free_percent = disk["free_percent"]
 
     data = {
         "total_space": web_total,
@@ -71,44 +55,18 @@ try:
     alert_sent = False
     # When disk free space is less than 10%, send an email to the admin
     if free_percent < 30:
-        mailjet_api_key = os.getenv("MAILJET_API_KEY", "")
-        mailjet_secret_key = os.getenv("MAILJET_SECRET_KEY", "")
-        headers = {
-            "Content-Type": "application/json"
-        }
-        email_data = {
-            "Messages": [
-                {
-                    "From": {
-                        "Email": "g.otterspeer@uva.nl",
-                        "Name": "Disk Monitor"
-                    },
-                    "To": [
-                        {
-                            "Email": "g.otterspeer@uva.nl",
-                            "Name": "Admin"
-                        }
-                    ],
-                    "Subject": "Disk Space Alert",
-                    "TextPart": f"Warning: Disk space is below 10%. Current free space: {free_percent:.2f}%."
-                }
-            ]
-        }
-        if not (mailjet_api_key and mailjet_secret_key):
-            print(f"MAILJET_API_KEY/MAILJET_SECRET_KEY not set in {ENV_FILE}; skipping alert email.")
+        # Mailjet credentials come from ENV_FILE (MAILJET_API_KEY/_SECRET_KEY)
+        alert_sent = send_alert(
+            "Disk Space Alert",
+            f"Warning: Disk space is below 10%. Current free space: {free_percent:.2f}%.",
+            channels=("mailjet",),
+            email_from="g.otterspeer@uva.nl", from_name="Disk Monitor",
+            email_to="g.otterspeer@uva.nl", to_name="Admin",
+        )
+        if alert_sent:
+            print("Alert email sent successfully.")
         else:
-            response = requests.post(
-                "https://api.mailjet.com/v3.1/send",
-                json=email_data,
-                auth=(mailjet_api_key, mailjet_secret_key),
-                headers=headers
-            )
-            if response.status_code == 200:
-                print("Alert email sent successfully.")
-                alert_sent = True
-            else:
-                print(f"Failed to send alert email: {response.text}")
-            print(response.text)
+            print("Failed to send alert email.")
 
     # Send success heartbeat with disk usage stats
     monitor.send_heartbeat_with_stats(

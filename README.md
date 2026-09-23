@@ -5,8 +5,13 @@ Job scheduler and monitors for the SignCollect servers: media conversion, mocap 
 - It has two schedulers, and the core server runs both.
   - `scheduler_v2.py` is one process with a 60 s loop and SQLite state (`lib/`). It reads `config.json`.
   - `service_wrapper.py <name>` runs one job per process and systemd unit. `watchdog_daemon.py` supervises the wrappers. They read `services_config.json`.
-- In this repo, 16 of the 17 `config.json` jobs are also enabled in `services_config.json`, so they run twice. Pick one owner before you add a job. The plan is to keep only the wrappers.
-- Monitors: `server_monitor.py` (disk, rclone mount, MySQL; alerts to Discord), `checkDisk.py` (mail through Mailjet), `rclone_monitor.py`, `sync_mocap_files.py`.
+
+  | Entry point | Reads | Runs on |
+  |---|---|---|
+  | `python-scheduler.service` -> `scheduler_v2.py` | `config.json` (`--config`) | core server; demo hosts, with the stack's `config/pythoncron.demo.json` in its place |
+  | 19 `service-<job>.service` units and `watchdog-daemon.service` -> `service_wrapper.py`, `watchdog_daemon.py` | `services_config.json` | core server only |
+- 16 of the 17 `config.json` jobs are also enabled in `services_config.json`, so the core server runs them twice. Only in `config.json`: Cleanup OBS. Only in `services_config.json`: Copy_AB_files, match_Records_for_LiveLink..., qRconvert. Dropping one side changes what the core server runs; decide that with the switch-over in [stack#33](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack/issues/33). Pick one owner before you add a job.
+- Monitors: `server_monitor.py` (disk, rclone mount, MySQL; alerts to Discord), `checkDisk.py` (mail through Mailjet), `rclone_monitor.py`, `sync_mocap_files.py`. Disk and mount checks, alerts and rotating logs come from the shared client (see Dependencies).
 
 ## Where it runs
 | Host | Code | Job list | State and logs |
@@ -43,7 +48,6 @@ python3 -m pytest tests/ -v
 - Git ignores `logs/`, `state/` and `*.db`.
 
 ## Dependencies
-- It runs files from [signlab_zin](https://github.com/Amsterdam-Humanities-Labs/signlab_zin), [signlab_mocap](https://github.com/Amsterdam-Humanities-Labs/signlab_mocap), the docroot `helpScripts/` and [signlab_signCollect-v2](https://github.com/Amsterdam-Humanities-Labs/signlab_signCollect-v2) (`signbank_sync/ecv_refresh.php`, which decides itself whether a rebuild is due). The units need write access to the docroot.
-- [signlab_client_monitor_api](https://github.com/Amsterdam-Humanities-Labs/signlab_client_monitor_api): `python_client.py` is a vendored copy of its `client/` package; do not edit it here. `checkDisk.py`, `rclone_monitor.py` and `sync_mocap_files.py` prefer the installed `signlab-client-monitor` package. They send heartbeats to `https://signcollect.nl/client_monitor_api/api.php`.
-- Shared checks and alerting will move into that package ([stack#37](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack/issues/37)). Keep the vendored copy until the core server has the package.
+- It runs files from [signlab_zin](https://github.com/Amsterdam-Humanities-Labs/signlab_zin), [signlab_mocap](https://github.com/Amsterdam-Humanities-Labs/signlab_mocap), [signlab_viconSync](https://github.com/Amsterdam-Humanities-Labs/signlab_viconSync), loose docroot scripts (`/web/cleanLockFiles.php`, `/web/tempScripts/`, `/web/josBoard/`, `/web/qr/`) and, on the demo hosts, [signlab_signCollect-v2](https://github.com/Amsterdam-Humanities-Labs/signlab_signCollect-v2) (`signbank_sync/ecv_refresh.php`, which decides itself whether a rebuild is due). The units need write access to the docroot.
+- [signlab_client_monitor_api](https://github.com/Amsterdam-Humanities-Labs/signlab_client_monitor_api): `python_client.py` is a vendored copy of its `client/` package; do not edit it here. Scripts import `ClientMonitor`, `disk_usage`, `mount_responds`, `mount_read_write`, `send_alert` and `setup_rotating_logger` from the installed `signlab-client-monitor` package (1.1.0 or later), else from this copy. Heartbeats go to `https://signcollect.nl/client_monitor_api/api.php`. Keep the vendored copy until the core server has the package.
 - External services: MySQL, Discord, Mailjet.

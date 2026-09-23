@@ -212,7 +212,7 @@
 
       "command": {
         "executable": "/usr/bin/python3",
-        "script": "/home/gomer/pythonCron/checkDisk.py",
+        "script": "/home/gomer/pythonCron/check_disk.py",
         "working_dir": "/home/gomer/pythonCron",
         "environment": {},
         "timeout_seconds": 300
@@ -730,7 +730,7 @@
 
       "command": {
         "executable": "/usr/bin/python3",
-        "script": "/home/gomer/viconSync/sync_vicon_rsync.py",
+        "script": "/home/gomer/viconSync/sync_vicon_files.py",
         "working_dir": "/home/gomer/viconSync",
         "environment": {},
         "timeout_seconds": 7200

@@ -11,7 +11,7 @@ Job scheduler and monitors for the SignCollect servers: media conversion, mocap 
   | `python-scheduler.service` -> `scheduler_v2.py` | `config.json` (`--config`) | core server; demo hosts, with the stack's `config/pythoncron.demo.json` in its place |
   | 19 `service-<job>.service` units and `watchdog-daemon.service` -> `service_wrapper.py`, `watchdog_daemon.py` | `services_config.json` | core server only |
 - 16 of the 17 `config.json` jobs are also enabled in `services_config.json`, so the core server runs them twice. Only in `config.json`: Cleanup OBS. Only in `services_config.json`: Copy_AB_files, match_Records_for_LiveLink..., qRconvert. Dropping one side changes what the core server runs; decide that with the switch-over in [stack#33](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack/issues/33). Pick one owner before you add a job.
-- Monitors: `server_monitor.py` (disk, rclone mount, MySQL; alerts to Discord), `checkDisk.py` (mail through Mailjet), `rclone_monitor.py`, `sync_mocap_files.py`. Disk and mount checks, alerts and rotating logs come from the shared client (see Dependencies).
+- Monitors: `server_monitor.py` (disk, rclone mount, MySQL; alerts to Discord), `check_disk.py` (mail through Mailjet; `checkDisk.py` is a stub with its old name), `rclone_monitor.py`, `sync_mocap_files.py`. Disk and mount checks, alerts and rotating logs come from the shared client (see Dependencies).
 
 ## Where it runs
 | Host | Code | Job list | State and logs |
@@ -41,7 +41,7 @@ python3 -m pytest tests/ -v
 - `config.json` is a flat JSON array of jobs. Keys: `service_name` (unique), `executable`, `path` (job skipped if missing), `working_dir`, `interval_minutes`, `time_or_minute` (`minute` or `time`), `scheduled_time` (`HH:MM`), `timeout_minutes`, `execute_immediately`.
 - `services_config.json` is `{global, services: [...]}`. Each job has `execution`, `command`, `health`, `retry`, `logging`.
 - All job paths are absolute and host-specific (`/web`, `/web/zin`, `/home/gomer/viconSync`).
-- `checkDisk.py`, `server_monitor.py` and `sync_mocap_files.py` find the docroot with the vendored `sc_paths.py`: `SC_WEB_ROOT` from the environment or `$SC_ENV_FILE`/`/web/.env`, default `/web`. Edit it in [signlab_signcollect-lib](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-lib), not here.
+- `check_disk.py`, `server_monitor.py` and `sync_mocap_files.py` find the docroot with the vendored `sc_paths.py`: `SC_WEB_ROOT` from the environment or `$SC_ENV_FILE`/`/web/.env`, default `/web`. Edit it in [signlab_signcollect-lib](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-lib), not here.
 - `PYTHONCRON_HOME` (config lookup) and `PYTHONCRON_STATE_DIR` (logs, `scheduler_state.db`) relocate the v2 scheduler. The wrappers and the watchdog still hardcode `/home/gomer/pythonCron`.
 - Keep `scheduler_state.db`. Without it, every job is due at once.
 - Secrets come from `/web/zin/.env` (not in git): `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`, `DISCORD_WEBHOOK_URL`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`.

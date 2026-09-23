@@ -33,7 +33,7 @@ retries), `health_monitor` (kills stuck processes), `service_executor` (subproce
 `config_validator` (pre-flight validation).
 
 Supporting: `server_monitor.py` (disk/rclone/MySQL → Discord alerts via the shared client),
-`checkDisk.py`, `rclone_monitor.py`, `sync_mocap_files.py`,
+`check_disk.py`, `rclone_monitor.py`, `sync_mocap_files.py`,
 `emergency_log_cleanup.py`.
 
 ## Configuration

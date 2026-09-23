@@ -42,7 +42,7 @@
     {
         "service_name": "Check Disk",
         "executable": "/usr/bin/python3",
-        "path": "/home/gomer/pythonCron/checkDisk.py",
+        "path": "/home/gomer/pythonCron/check_disk.py",
         "interval_minutes": 60,
         "execute_immediately": true,
         "working_dir": "/home/gomer/pythonCron",
@@ -98,7 +98,7 @@
     {
         "service_name": "sync Vicon files (rsync)",
         "executable": "/usr/bin/python3",
-        "path": "/home/gomer/viconSync/sync_vicon_rsync.py",
+        "path": "/home/gomer/viconSync/sync_vicon_files.py",
         "interval_minutes": 1440,
         "execute_immediately": false,
         "working_dir": "/home/gomer/viconSync",

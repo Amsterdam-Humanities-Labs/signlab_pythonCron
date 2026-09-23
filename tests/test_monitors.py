@@ -60,7 +60,7 @@ def test_checkdisk_mails_below_30_percent_free(web, posts, monkeypatch):
     fake_disk(monkeypatch, free=250)
     monkeypatch.setenv("MAILJET_API_KEY", "k")
     monkeypatch.setenv("MAILJET_SECRET_KEY", "s")
-    runpy.run_path(str(ROOT / "checkDisk.py"))
+    runpy.run_path(str(ROOT / "check_disk.py"))
     mail = [c for c in posts if "mailjet" in c["url"]]
     assert len(mail) == 1
     assert mail[0]["json"]["Messages"][0]["Subject"] == "Disk Space Alert"
@@ -75,7 +75,7 @@ def test_checkdisk_no_mail_above_30_percent(web, posts, monkeypatch):
     fake_disk(monkeypatch, free=400)
     monkeypatch.setenv("MAILJET_API_KEY", "k")
     monkeypatch.setenv("MAILJET_SECRET_KEY", "s")
-    runpy.run_path(str(ROOT / "checkDisk.py"))
+    runpy.run_path(str(ROOT / "check_disk.py"))
     assert not [c for c in posts if "mailjet" in c["url"]]
 
 
@@ -131,3 +131,10 @@ def test_vendored_client_carries_the_shared_helpers():
     """python_client.py is a byte copy of the package client.py (1.1.0+)."""
     text = (ROOT / "python_client.py").read_text()
     assert "def send_alert(" in text and "def disk_usage(" in text
+
+
+def test_old_checkdisk_name_runs_check_disk(web, posts, monkeypatch):
+    """checkDisk.py is a stub kept for callers that still start the old path (#51)."""
+    fake_disk(monkeypatch, free=250)
+    runpy.run_path(str(ROOT / "checkDisk.py"))
+    assert json.loads((web / "diskCheck.json").read_text())["free_percent"] == 25.0

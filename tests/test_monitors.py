@@ -60,7 +60,7 @@ def test_checkdisk_mails_below_30_percent_free(web, posts, monkeypatch):
     fake_disk(monkeypatch, free=250)
     monkeypatch.setenv("MAILJET_API_KEY", "k")
     monkeypatch.setenv("MAILJET_SECRET_KEY", "s")
-    runpy.run_path(str(ROOT / "checkDisk.py"))
+    runpy.run_path(str(ROOT / "check_disk.py"))
     mail = [c for c in posts if "mailjet" in c["url"]]
     assert len(mail) == 1
     assert mail[0]["json"]["Messages"][0]["Subject"] == "Disk Space Alert"
@@ -75,7 +75,7 @@ def test_checkdisk_no_mail_above_30_percent(web, posts, monkeypatch):
     fake_disk(monkeypatch, free=400)
     monkeypatch.setenv("MAILJET_API_KEY", "k")
     monkeypatch.setenv("MAILJET_SECRET_KEY", "s")
-    runpy.run_path(str(ROOT / "checkDisk.py"))
+    runpy.run_path(str(ROOT / "check_disk.py"))
     assert not [c for c in posts if "mailjet" in c["url"]]
 
 

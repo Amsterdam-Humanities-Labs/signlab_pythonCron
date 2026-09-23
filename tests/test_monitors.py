@@ -131,3 +131,10 @@ def test_vendored_client_carries_the_shared_helpers():
     """python_client.py is a byte copy of the package client.py (1.1.0+)."""
     text = (ROOT / "python_client.py").read_text()
     assert "def send_alert(" in text and "def disk_usage(" in text
+
+
+def test_old_checkdisk_name_runs_check_disk(web, posts, monkeypatch):
+    """checkDisk.py is a stub kept for callers that still start the old path (#51)."""
+    fake_disk(monkeypatch, free=250)
+    runpy.run_path(str(ROOT / "checkDisk.py"))
+    assert json.loads((web / "diskCheck.json").read_text())["free_percent"] == 25.0

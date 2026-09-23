@@ -683,7 +683,7 @@
 
       "command": {
         "executable": "/usr/bin/python3",
-        "script": "/web/mocap/convert.py",
+        "script": "/web/mocap/convert_livelink_videos.py",
         "working_dir": "/web/mocap",
         "environment": {},
         "timeout_seconds": 5400

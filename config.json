@@ -119,7 +119,7 @@
     {
         "service_name": "Convert Livelink videos",
         "executable": "/usr/bin/python3",
-        "path": "/web/mocap/convert.py",
+        "path": "/web/mocap/convert_livelink_videos.py",
         "interval_minutes": 1440,
         "execute_immediately": false,
         "working_dir": "/web/mocap",

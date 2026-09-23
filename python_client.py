@@ -35,7 +35,16 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 
-import requests
+# Only sending needs `requests`, and some hosts (the demo hosts) do not have
+# it. Importing this module must still work there, because scripts import it
+# for setup_rotating_logger and disk_usage too: without `requests` every send
+# logs a warning and returns a failure, and nothing else changes.
+try:
+    import requests
+except ImportError:  # pragma: no cover - exercised by a test with sys.modules
+    requests = None
+
+_NO_REQUESTS = "python 'requests' is not installed; nothing sent"
 
 #: Where the API lives. Hardcoded in every caller before this package existed,
 #: so it is the default here rather than something each caller must remember.
@@ -270,6 +279,9 @@ class ClientMonitor:
         The action goes in the query string, not the body - api.php routes on
         `$_GET['action']` and ignores an action in the JSON.
         """
+        if requests is None:
+            self.logger.warning("%s for %s: %s", action, self.client_id, _NO_REQUESTS)
+            return _failure(f"{action}: {_NO_REQUESTS}")
         try:
             response = requests.post(
                 f"{self.api_url}?action={action}",
@@ -500,6 +512,9 @@ ALERT_LEVELS = {
 
 def _post_alert(url: str, ok_status: int, logger: logging.Logger, what: str,
                 timeout: float, **kwargs) -> bool:
+    if requests is None:
+        logger.warning(f"{what}: {_NO_REQUESTS}")
+        return False
     try:
         response = requests.post(url, timeout=timeout, **kwargs)
     except Exception as exc:

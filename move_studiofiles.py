@@ -26,9 +26,36 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Callable, Dict, Iterable, List, Tuple
 
-import logging.handlers
-
 from sc_paths import sc_path
+
+# Log setup: the installed package, else the copy vendored beside this script
+# (see README.md), else the stdlib.
+try:
+    from signlab_client_monitor import setup_rotating_logger
+except ImportError:
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from python_client import setup_rotating_logger
+    except ImportError:
+        # Last resort, stdlib only: a missing file or dependency must never
+        # stop this process from starting. Same files and rotation.
+        import logging.handlers
+
+        def setup_rotating_logger(path, name=None, level=logging.INFO,
+                                  max_bytes=5 * 1024 * 1024, backup_count=5,
+                                  to_stream=True, stream=None,
+                                  fmt="[%(asctime)s] [%(levelname)s] %(message)s",
+                                  datefmt=None):
+            logger = logging.getLogger(name)
+            logger.setLevel(level)
+            handlers = [logging.handlers.RotatingFileHandler(
+                path, maxBytes=max_bytes, backupCount=backup_count)]
+            if to_stream:
+                handlers.append(logging.StreamHandler(stream))
+            for handler in handlers:
+                handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+                logger.addHandler(handler)
+            return logger
 
 # Runtime data goes beside the script (production: /home/gomer/pythonCron),
 # or under $PYTHONCRON_STATE_DIR, as scheduler_v2.py does.
@@ -36,16 +63,9 @@ STATE_DIR = os.environ.get('PYTHONCRON_STATE_DIR') or os.path.dirname(os.path.ab
 LOG_DIR = os.path.join(STATE_DIR, 'logs')
 os.makedirs(LOG_DIR, exist_ok=True)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        # 5 MB x 5, the same policy as scheduler_v2.log.
-        logging.handlers.RotatingFileHandler(
-            os.path.join(LOG_DIR, 'move_videos.log'), maxBytes=5 * 1024 * 1024, backupCount=5),
-        logging.StreamHandler()
-    ]
-)
+# Root logger: logs/move_videos.log (5 MB x 5) and stderr.
+setup_rotating_logger(os.path.join(LOG_DIR, 'move_videos.log'),
+                      fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 RCLONE_BIN = os.environ.get("RCLONE_BIN", "rclone")
 REMOTE = "signcollect:/AIHR-FGW-TEST-SIGNLAB (Projectfolder)/studioFiles"

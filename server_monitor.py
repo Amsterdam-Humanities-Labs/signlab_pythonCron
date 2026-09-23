@@ -11,16 +11,20 @@ Sends Discord alerts on failures.
 import os
 import sys
 import time
-import shutil
 import logging
 import subprocess
 import socket
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, '/home/gomer/pythonCron')
-from discord_bot import DiscordBot
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sc_paths import sc_path
+# Shared checks and alerting: the installed package, else the copy vendored
+# beside this script (see README.md).
+try:
+    from signlab_client_monitor import disk_usage, mount_read_write, send_alert as _send
+except ImportError:
+    from python_client import disk_usage, mount_read_write, send_alert as _send
 
 # ---------------------------------------------------------------------------
 # Load .env from <root>/zin/.env, normally /web/zin/.env
@@ -37,10 +41,8 @@ if Path(ENV_FILE).exists():
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
-DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID", "")
-
+# Discord credentials (DISCORD_WEBHOOK_URL, or DISCORD_BOT_TOKEN +
+# DISCORD_CHANNEL_ID) are read from the environment by send_alert.
 MOUNT_TEST_DIR = sc_path("media", "studioFiles", "sc_test")
 DISK_THRESHOLD_PERCENT = 10  # alert when free space below this
 SQL_TIMEOUT_SECONDS = 30
@@ -73,35 +75,6 @@ if not DB_PASSWORD:
 # Discord helper
 # ---------------------------------------------------------------------------
 
-_bot = None
-
-
-def get_bot():
-    """Lazy-init Discord bot so we fail gracefully if no credentials."""
-    global _bot
-    if _bot is not None:
-        return _bot
-    try:
-        if DISCORD_WEBHOOK_URL:
-            _bot = DiscordBot(webhook_url=DISCORD_WEBHOOK_URL, logger=logger)
-        elif DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID:
-            _bot = DiscordBot(
-                bot_token=DISCORD_BOT_TOKEN,
-                channel_id=DISCORD_CHANNEL_ID,
-                logger=logger,
-            )
-        else:
-            logger.error(
-                "No Discord credentials configured. "
-                "Set DISCORD_WEBHOOK_URL or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID"
-            )
-            return None
-    except Exception as e:
-        logger.error(f"Failed to init Discord bot: {e}")
-        return None
-    return _bot
-
-
 ALERT_COOLDOWN_SECONDS = 3600  # re-notify a still-failing check at most hourly
 
 _last_sent = {}  # alert title -> unix timestamp of last send
@@ -117,16 +90,15 @@ def send_alert(title: str, message: str, level: str = "error"):
         return
     _last_sent[title] = now
 
-    bot = get_bot()
-    if bot is None:
-        logger.warning(f"ALERT (no Discord): [{level}] {title} - {message}")
-        return
-    bot.send_notification(
-        title=title,
-        message=f"**Host:** {HOSTNAME}\n{message}",
+    if not _send(
+        title,
+        f"**Host:** {HOSTNAME}\n{message}",
         level=level,
+        channels=("discord",),
         footer=f"Server Monitor | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-    )
+        logger=logger,
+    ):
+        logger.warning(f"ALERT (no Discord): [{level}] {title} - {message}")
 
 
 def clear_alert(title: str, healthy: bool):
@@ -134,16 +106,15 @@ def clear_alert(title: str, healthy: bool):
     if not healthy or title not in _last_sent:
         return
     del _last_sent[title]
-    bot = get_bot()
-    if bot is None:
-        logger.info(f"RECOVERED (no Discord): {title}")
-        return
-    bot.send_notification(
-        title=f"Recovered: {title}",
-        message=f"**Host:** {HOSTNAME}\nCheck is passing again.",
+    if not _send(
+        f"Recovered: {title}",
+        f"**Host:** {HOSTNAME}\nCheck is passing again.",
         level="info",
+        channels=("discord",),
         footer=f"Server Monitor | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-    )
+        logger=logger,
+    ):
+        logger.info(f"RECOVERED (no Discord): {title}")
 
 
 # ---------------------------------------------------------------------------
@@ -153,13 +124,13 @@ def clear_alert(title: str, healthy: bool):
 def check_disk_usage() -> bool:
     """Return True if disk is healthy (>= threshold free)."""
     try:
-        usage = shutil.disk_usage("/")
-        free_percent = (usage.free / usage.total) * 100
+        usage = disk_usage("/")
+        free_percent = usage["free_percent"]
         logger.info(f"Disk free: {free_percent:.1f}%")
 
         if free_percent < DISK_THRESHOLD_PERCENT:
-            free_gb = usage.free / (1024 ** 3)
-            total_gb = usage.total / (1024 ** 3)
+            free_gb = usage["free"] / (1024 ** 3)
+            total_gb = usage["total"] / (1024 ** 3)
             send_alert(
                 "Low Disk Space",
                 (
@@ -185,57 +156,10 @@ MOUNT_POINT = sc_path("media", "studioFiles")
 
 def check_rclone_mount() -> bool:
     """Verify rclone FUSE mount is active, then write/read test. Return True if OK."""
-    test_file = os.path.join(MOUNT_TEST_DIR, "monitor_test.txt")
-    token = f"monitor-{datetime.now().isoformat()}"
-
     try:
-        # First: verify the path is an actual mount point (not just a local dir).
-        # Uses os.path.ismount() instead of `mountpoint -q` — the latter gets
-        # confused by stacked FUSE mounts that can appear when rclone is restarted
-        # while this service runs in a private mount namespace.
-        if not os.path.ismount(MOUNT_POINT):
-            raise RuntimeError(
-                f"{MOUNT_POINT} is not a mount point — rclone is not mounted"
-            )
-
-        # Ensure test dir exists (with timeout to catch hung mounts)
-        result = subprocess.run(
-            ["mkdir", "-p", MOUNT_TEST_DIR],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"mkdir failed: {result.stderr.strip()}")
-
-        # Write test
-        result = subprocess.run(
-            ["bash", "-c", f'echo "{token}" > "{test_file}"'],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Write failed: {result.stderr.strip()}")
-
-        # Read test
-        result = subprocess.run(
-            ["cat", test_file],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Read failed: {result.stderr.strip()}")
-
-        content = result.stdout.strip()
-        if content != token:
-            raise RuntimeError(
-                f"Read mismatch: wrote '{token}', got '{content}'"
-            )
-
-        # Cleanup
-        subprocess.run(["rm", "-f", test_file], timeout=10, capture_output=True)
+        # Mounted, then mkdir/write/read/delete sc_test/monitor_test.txt, each
+        # step with a 15 s timeout; raises on the first step that fails.
+        mount_read_write(MOUNT_POINT, MOUNT_TEST_DIR, timeout=15)
 
         logger.info("Rclone mount: write/read OK")
         return True

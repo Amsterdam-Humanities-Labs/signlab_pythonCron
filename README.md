@@ -3,8 +3,14 @@ Job scheduler and monitors for the SignCollect servers: media conversion, mocap 
 
 ## What it does
 - **Two schedulers, both active on production.** `scheduler_v2.py` (one process, 60 s loop, SQLite state via `lib/`) reads `config.json`. `service_wrapper.py <name>` (one process and systemd unit per job, supervised by `watchdog_daemon.py`) reads `services_config.json`.
-- 12 of the 17 `config.json` jobs are also in `services_config.json`, so they run twice. Pick one owner before adding a job. The intended end state is the wrappers alone.
-- Monitors: `server_monitor.py` (disk, rclone mount, MySQL, alerts to Discord), `checkDisk.py` (Mailjet mail), `rclone_monitor.py`, `sync_mocap_files.py`.
+- Which file each entry point reads (both live, so neither is trimmed here):
+
+  | Entry point | Reads | Runs on |
+  |---|---|---|
+  | `python-scheduler.service` → `scheduler_v2.py` | `config.json` (`--config`) | production; demo hosts, with the stack's `config/pythoncron.demo.json` in its place |
+  | `service-<job>.service` ×20 + `watchdog-daemon.service` → `service_wrapper.py`, `watchdog_daemon.py` | `services_config.json` | production only |
+- 16 of the 17 `config.json` jobs are also enabled in `services_config.json`, so production runs them twice (only in `config.json`: Cleanup OBS; only in `services_config.json`: Copy_AB_files, match_Records_for_LiveLink…, qRconvert). Dropping one side changes what production runs: decide that with the switch-over in [stack#33](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack/issues/33). Pick one owner before adding a job.
+- Monitors: `server_monitor.py` (disk, rclone mount, MySQL, alerts to Discord), `checkDisk.py` (Mailjet mail), `rclone_monitor.py`, `sync_mocap_files.py`. Disk/mount checks, alerts and rotating logs come from the shared client (see Dependencies).
 
 ## Where it runs
 | Host | Code | Job list | State + logs |
@@ -42,5 +48,5 @@ python3 -m pytest tests/ -v
 
 ## Dependencies
 - Runs files from `signlab_zin`, `signlab_mocap`, the docroot `helpScripts/` and `signlab_signCollect-v2` (`signbank_sync/ecv_refresh.php`, which decides for itself whether a rebuild is due). The unit needs write access to the docroot.
-- `signlab_client_monitor_api`: `python_client.py` is a vendored copy of its `client/` package. Do not edit it here. `checkDisk.py`, `rclone_monitor.py`, `sync_mocap_files.py` prefer the installed `signlab-client-monitor` package and heartbeat to `https://signcollect.nl/client_monitor_api/api.php`. Shared checks and alerting are planned to move into that package ([stack#37](https://github.com/Amsterdam-Humanities-Labs/signlab_signcollect-stack/issues/37)); keep the vendored copy until production has the package.
+- `signlab_client_monitor_api`: `python_client.py` is a vendored copy of its `client/` package. Do not edit it here. Scripts import `ClientMonitor`, `disk_usage`, `mount_responds`, `mount_read_write`, `send_alert` and `setup_rotating_logger` from the installed `signlab-client-monitor` package (1.1.0+), else from this copy. Heartbeats go to `https://signcollect.nl/client_monitor_api/api.php`. Keep the vendored copy until production has the package.
 - External: MySQL, Discord, Mailjet.

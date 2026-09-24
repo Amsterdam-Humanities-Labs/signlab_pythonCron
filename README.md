@@ -51,3 +51,10 @@ python3 -m pytest tests/ -v
 - It runs files from [signlab_zinnen-annotation](https://github.com/Amsterdam-Humanities-Labs/signlab_zinnen-annotation), [signlab_mocap](https://github.com/Amsterdam-Humanities-Labs/signlab_mocap), [signlab_viconSync](https://github.com/Amsterdam-Humanities-Labs/signlab_viconSync), loose docroot scripts (`/web/cleanLockFiles.php`, `/web/tempScripts/`, `/web/josBoard/`, `/web/qr/`) and, on the demo hosts, [signlab_signCollect-v2](https://github.com/Amsterdam-Humanities-Labs/signlab_signCollect-v2) (`signbank_sync/ecv_refresh.php`, which decides itself whether a rebuild is due). The units need write access to the docroot.
 - [signlab_client_monitor_api](https://github.com/Amsterdam-Humanities-Labs/signlab_client_monitor_api): `python_client.py` is a vendored copy of its `client/` package; do not edit it here. Scripts import `ClientMonitor`, `disk_usage`, `mount_responds`, `mount_read_write`, `send_alert` and `setup_rotating_logger` from the installed `signlab-client-monitor` package (1.1.0 or later), else from this copy. Heartbeats go to `https://signcollect.nl/client_monitor_api/api.php`. Keep the vendored copy until the core server has the package.
 - External services: MySQL, Discord, Mailjet.
+
+## License and citation
+
+Apache License 2.0, copyright University of Amsterdam: see [LICENSE](LICENSE) and
+[NOTICE](NOTICE). You may use it, also commercially, as long as you credit
+Gomer Otterspeer / University of Amsterdam as the source. To cite it, use
+[CITATION.cff](CITATION.cff) (the *Cite this repository* button on GitHub) or the DOI [10.21942/uva.33980362](https://doi.org/10.21942/uva.33980362).

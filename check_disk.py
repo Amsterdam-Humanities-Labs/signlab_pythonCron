@@ -1,5 +1,6 @@
 #with this script we can check the disk space of the system
-#when the disk space is less than 20% write to diskCheck.json file
+#writes disk usage to diskCheck.json and mails the admin when free space
+#drops below ALERT_FREE_PERCENT
 
 import json
 import os
@@ -15,6 +16,10 @@ try:
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from python_client import ClientMonitor, disk_usage, send_alert
+
+# Mail alert when free space on / is below this percentage. server_monitor.py
+# sends its own Discord alert at 10%; this mail is the earlier warning.
+ALERT_FREE_PERCENT = 30
 
 # Load credentials from <root>/zin/.env, normally /web/zin/.env (see README.md)
 ENV_FILE = sc_path("zin", ".env")
@@ -53,12 +58,12 @@ try:
         json.dump(data, json_file)
 
     alert_sent = False
-    # When disk free space is less than 10%, send an email to the admin
-    if free_percent < 30:
+    # When disk free space is below the threshold, send an email to the admin
+    if free_percent < ALERT_FREE_PERCENT:
         # Mailjet credentials come from ENV_FILE (MAILJET_API_KEY/_SECRET_KEY)
         alert_sent = send_alert(
             "Disk Space Alert",
-            f"Warning: Disk space is below 10%. Current free space: {free_percent:.2f}%.",
+            f"Warning: Disk space is below {ALERT_FREE_PERCENT}%. Current free space: {free_percent:.2f}%.",
             channels=("mailjet",),
             email_from="g.otterspeer@uva.nl", from_name="Disk Monitor",
             email_to="g.otterspeer@uva.nl", to_name="Admin",

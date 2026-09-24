@@ -65,7 +65,7 @@ def test_checkdisk_mails_below_30_percent_free(web, posts, monkeypatch):
     assert len(mail) == 1
     assert mail[0]["json"]["Messages"][0]["Subject"] == "Disk Space Alert"
     assert mail[0]["json"]["Messages"][0]["TextPart"] == (
-        "Warning: Disk space is below 10%. Current free space: 25.00%.")
+        "Warning: Disk space is below 30%. Current free space: 25.00%.")
     beat = [c for c in posts if c["url"].endswith("action=heartbeat")][-1]
     assert beat["json"]["metadata"]["alert_sent"] is True
     assert json.loads((web / "diskCheck.json").read_text())["free_percent"] == 25.0

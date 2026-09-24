@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "signlab_pythonCron: Service scheduler and monitoring for Zin/SignCollect infrastructure"
+authors:
+  - given-names: Gomer
+    family-names: Otterspeer
+    affiliation: University of Amsterdam
+  - given-names: Berit
+    family-names: Janssen
+  - given-names: Stijn
+    name-particle: van
+    family-names: Hannen
+license: Apache-2.0
+repository-code: "https://github.com/Amsterdam-Humanities-Labs/signlab_pythonCron"
+doi: "10.21942/uva.33980362"
+keywords:
+  - "sign language"
+  - "NGT"
+  - "SignCollect"
